@@ -2,16 +2,22 @@
 # -*- coding: utf-8 -*-
 """
 locoreach_ai 毎日自動投稿（GitHub Actions 用）
-- content.json から「今日（JST）の曜日」のジャンルを選び、カルーセルを投稿する
-- アクセストークンは環境変数 IG_TOKEN（GitHubのSecretsに保存）から読む
-- 該当曜日のコンテンツが無ければ何もしない（月・火など未設定の日はスキップ）
+チャネル: Instagramフィード（カルーセル）＋ Instagramストーリーズ（表紙）＋ Threads（カルーセル）
+- content.json から「今日（JST）の曜日」のジャンルを選ぶ
+- IGトークンは環境変数 IG_TOKEN、Threadsトークンは THREADS_TOKEN（GitHub Secrets）
+- 各チャネルは独立。1つ失敗しても他は続行する
+- 該当曜日のコンテンツが無ければ何もしない（月・火など未設定日はスキップ）
 - DRY_RUN=1 のときは投稿せず内容だけ表示（テスト用）
 """
 import os, sys, json, time, datetime, urllib.request, urllib.parse
 
-GRAPH_VERSION = "v21.0"
-BASE = f"https://graph.instagram.com/{GRAPH_VERSION}"
-TOKEN = os.environ.get("IG_TOKEN", "").strip()
+IG_VERSION = "v21.0"
+IG_BASE = f"https://graph.instagram.com/{IG_VERSION}"
+TH_VERSION = "v1.0"
+TH_BASE = f"https://graph.threads.net/{TH_VERSION}"
+
+IG_TOKEN = os.environ.get("IG_TOKEN", "").strip()
+TH_TOKEN = os.environ.get("THREADS_TOKEN", "").strip()
 DRY = os.environ.get("DRY_RUN", "") == "1"
 
 WEEKDAY_KEY = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -22,15 +28,84 @@ def jst_today_key():
     return WEEKDAY_KEY[now.weekday()], now.strftime("%Y-%m-%d %H:%M JST")
 
 
-def _get(path, params):
-    with urllib.request.urlopen(f"{BASE}/{path}?{urllib.parse.urlencode(params)}") as r:
+def _get(base, path, params):
+    url = f"{base}/{path}?{urllib.parse.urlencode(params)}"
+    with urllib.request.urlopen(url) as r:
         return json.loads(r.read().decode())
 
 
-def _post(path, params):
-    req = urllib.request.Request(f"{BASE}/{path}", data=urllib.parse.urlencode(params).encode(), method="POST")
+def _post(base, path, params):
+    req = urllib.request.Request(
+        f"{base}/{path}", data=urllib.parse.urlencode(params).encode(), method="POST"
+    )
     with urllib.request.urlopen(req) as r:
         return json.loads(r.read().decode())
+
+
+def threads_text(caption, limit=490):
+    """Threadsは1投稿500字まで。改行の切れ目で自然に短縮する。"""
+    if len(caption) <= limit:
+        return caption
+    cut = caption[:limit]
+    nl = cut.rfind("\n")
+    if nl > limit * 0.5:
+        cut = cut[:nl]
+    return cut.rstrip() + "…"
+
+
+# ---------------- Instagram: フィード（カルーセル） ----------------
+def post_ig_feed(urls, caption):
+    me = _get(IG_BASE, "me", {"fields": "user_id,username", "access_token": IG_TOKEN})
+    uid = str(me.get("user_id") or me.get("id"))
+    print(f"  [IGフィード] アカウント: {me.get('username')} (id={uid})")
+    children = []
+    for i, u in enumerate(urls, 1):
+        it = _post(IG_BASE, f"{uid}/media",
+                   {"image_url": u, "is_carousel_item": "true", "access_token": IG_TOKEN})
+        children.append(it["id"])
+        print(f"    画像 {i}/{len(urls)} 準備OK")
+        time.sleep(1)
+    cont = _post(IG_BASE, f"{uid}/media",
+                 {"media_type": "CAROUSEL", "children": ",".join(children),
+                  "caption": caption, "access_token": IG_TOKEN})
+    time.sleep(5)
+    pub = _post(IG_BASE, f"{uid}/media_publish",
+                {"creation_id": cont["id"], "access_token": IG_TOKEN})
+    print("  ✅ IGフィード投稿完了:", pub)
+    return uid
+
+
+# ---------------- Instagram: ストーリーズ（表紙画像） ----------------
+def post_ig_story(uid, cover_url):
+    cont = _post(IG_BASE, f"{uid}/media",
+                 {"media_type": "STORIES", "image_url": cover_url, "access_token": IG_TOKEN})
+    time.sleep(3)
+    pub = _post(IG_BASE, f"{uid}/media_publish",
+                {"creation_id": cont["id"], "access_token": IG_TOKEN})
+    print("  ✅ IGストーリーズ投稿完了:", pub)
+
+
+# ---------------- Threads: カルーセル ----------------
+def post_threads(urls, caption):
+    me = _get(TH_BASE, "me", {"fields": "id,username", "access_token": TH_TOKEN})
+    uid = str(me.get("id"))
+    print(f"  [Threads] アカウント: {me.get('username')} (id={uid})")
+    text = threads_text(caption)
+    children = []
+    for i, u in enumerate(urls, 1):
+        it = _post(TH_BASE, f"{uid}/threads",
+                   {"media_type": "IMAGE", "image_url": u,
+                    "is_carousel_item": "true", "access_token": TH_TOKEN})
+        children.append(it["id"])
+        print(f"    画像 {i}/{len(urls)} 準備OK")
+        time.sleep(1)
+    cont = _post(TH_BASE, f"{uid}/threads",
+                 {"media_type": "CAROUSEL", "children": ",".join(children),
+                  "text": text, "access_token": TH_TOKEN})
+    time.sleep(8)  # Threadsはカルーセル処理に少し時間が必要
+    pub = _post(TH_BASE, f"{uid}/threads_publish",
+                {"creation_id": cont["id"], "access_token": TH_TOKEN})
+    print("  ✅ Threads投稿完了:", pub)
 
 
 def main():
@@ -40,35 +115,55 @@ def main():
 
     item = content.get(key)
     if not item:
-        print(f"  → {key} のコンテンツは未設定。今日は投稿しません。")
+        print(f" → {key} のコンテンツは未設定。今日は投稿しません。")
         return
     urls = item["image_urls"]
     caption = item["caption"]
-    print(f"  → ジャンル: {item.get('genre')} / 画像 {len(urls)}枚")
+    print(f" → ジャンル: {item.get('genre')} / 画像 {len(urls)}枚")
 
     if DRY:
-        print("[DRY_RUN] 投稿しません。以下を投稿予定でした:")
+        print("[DRY_RUN] 投稿しません。予定内容:")
+        print(f"  IGフィード: カルーセル{len(urls)}枚 + キャプション")
+        print(f"  IGストーリーズ: 表紙 {urls[0]}")
+        print(f"  Threads: カルーセル{len(urls)}枚 + テキスト（{len(threads_text(caption))}字）")
+        print("--- caption ---")
         print(caption)
         return
-    if not TOKEN:
-        raise SystemExit("IG_TOKEN が設定されていません（GitHubのSecretsを確認）。")
 
-    me = _get("me", {"fields": "user_id,username", "access_token": TOKEN})
-    uid = str(me.get("user_id") or me.get("id"))
-    print(f"  投稿アカウント: {me.get('username')} (id={uid})")
+    results = {}
 
-    children = []
-    for i, u in enumerate(urls, 1):
-        it = _post(f"{uid}/media", {"image_url": u, "is_carousel_item": "true", "access_token": TOKEN})
-        children.append(it["id"])
-        print(f"    画像 {i}/{len(urls)} 準備OK")
-        time.sleep(1)
+    # Instagram（フィード → ストーリーズ）
+    if IG_TOKEN:
+        try:
+            uid = post_ig_feed(urls, caption)
+            results["ig_feed"] = "OK"
+            try:
+                post_ig_story(uid, urls[0])
+                results["ig_story"] = "OK"
+            except Exception as e:
+                results["ig_story"] = f"NG: {e}"
+                print("  ⚠ IGストーリーズ失敗:", e)
+        except Exception as e:
+            results["ig_feed"] = f"NG: {e}"
+            print("  ⚠ IGフィード失敗:", e)
+    else:
+        print("  IG_TOKEN 未設定のためInstagramはスキップ")
 
-    cont = _post(f"{uid}/media", {"media_type": "CAROUSEL", "children": ",".join(children),
-                                  "caption": caption, "access_token": TOKEN})
-    time.sleep(5)
-    pub = _post(f"{uid}/media_publish", {"creation_id": cont["id"], "access_token": TOKEN})
-    print("✅ 投稿完了:", pub)
+    # Threads
+    if TH_TOKEN:
+        try:
+            post_threads(urls, caption)
+            results["threads"] = "OK"
+        except Exception as e:
+            results["threads"] = f"NG: {e}"
+            print("  ⚠ Threads失敗:", e)
+    else:
+        print("  THREADS_TOKEN 未設定のためThreadsはスキップ")
+
+    print("=== 投稿結果 ===", json.dumps(results, ensure_ascii=False))
+    # いずれかが失敗したら異常終了（Actionsで気づけるように）
+    if any(v != "OK" for v in results.values()):
+        raise SystemExit("一部のチャネルで投稿に失敗しました: " + json.dumps(results, ensure_ascii=False))
 
 
 if __name__ == "__main__":
