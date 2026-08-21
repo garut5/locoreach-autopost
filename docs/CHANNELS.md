@@ -11,8 +11,9 @@ Secrets を入れた翌日から、そのチャネルだけが動き出す。
 | Instagram フィード（カルーセル） | `post.yml` | 20:00 | 画像4枚 | 稼働中 |
 | Instagram ストーリーズ | `post.yml` | 20:00 | 9:16画像1枚 | 稼働中 |
 | Threads | `post.yml` | 20:00 | 画像4枚 | 稼働中 |
-| オウンドメディア記事 | `Owned-Media/media-write.yml` | 07:00 | — | トークン待ち |
-| Threads（記事拡散） | `Owned-Media/media-promote.yml` | 12:00 | — | 稼働中 |
+| オウンドメディア記事 | Claude の定期実行（Routine） | 07:03 | — | GitHub Actions を使わない |
+| Threads（記事拡散） | `media-promote.yml` | 12:00 | 公開RSS | このリポジトリへ移設 |
+| SNSトークンの自動更新 | `refresh-tokens.yml` | 月 10:00 | — | 同上。両リポジトリのSecretを更新 |
 
 ## 追加したチャネル
 
@@ -32,6 +33,24 @@ Secrets を入れた翌日から、そのチャネルだけが動き出す。
 - `IG_TOKEN` — Instagram の長期トークン。リールもこれを使う
 - `THREADS_TOKEN` — Threads の長期トークン
 - `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` — R2 へ動画を置くため
+
+### 移設にともなって、このリポジトリに要るもの
+`Owned-Media` 側にあった Secret を、こちらにも登録する。
+
+- `THREADS_USER_ID`（任意。未設定なら `/me` から自動取得する）
+- `GH_PAT` — Fine-grained PAT。**`locoreach-autopost` と `Owned-Media` の両方**に
+  Secrets: Read and write を与える。トークン更新がこの2つの Secret を書き換えるため
+
+## なぜ private の Actions を使わないのか
+
+`Owned-Media` は private で、private リポジトリの Actions は
+GitHub の無料枠（月2,000分）を消費する。2026年8月にこれを使い切り、
+ジョブが起動前に弾かれる状態になった。
+
+public リポジトリの Actions は無料・無制限なので、
+定期実行はすべてこちらに置いている。`Owned-Media` 側の
+`media-promote.yml` / `refresh-tokens.yml` / `ci.yml` は
+schedule を止め、手動実行用に残してある。
 
 ### X（4つセットで1組。1つでも欠けるとスキップ）
 1. https://developer.x.com でアプリを作る

@@ -1,0 +1,61 @@
+name: 記事を Threads へ拡散
+
+# media.camomile.co.jp の最新記事を Threads に流す。
+#
+# 元は Owned-Media 側にあったが、あちらは private で
+# Actions が GitHub の無料枠（月2,000分）を消費する。
+# このリポジトリは public なので Actions は無料・無制限。
+# 記事の中身は公開済みの RSS から取れるため、private 側を触らずに動く。
+on:
+  schedule:
+    # 03:00 UTC = 12:00 JST。記事の公開（07:03 JST）から5時間後
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "特定の記事だけ投稿する場合はスラッグ"
+        required: false
+        default: ""
+      dry_run:
+        description: "内容の確認だけして投稿しない"
+        type: choice
+        options: ["no", "yes"]
+        default: "yes"
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Threads へ投稿
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          FEED_URL: ${{ vars.FEED_URL || 'https://media.camomile.co.jp/feed.xml' }}
+        run: |
+          FLAG=""
+          if [ "${{ inputs.dry_run }}" = "yes" ]; then FLAG="--dry-run"; fi
+          ARG=""
+          if [ -n "${{ inputs.slug }}" ]; then ARG="--slug ${{ inputs.slug }}"; fi
+          python3 scripts/promote.py $ARG $FLAG
+
+      - name: 投稿履歴を記録
+        run: |
+          # 未追跡のファイルは git commit <path> では拾えないので add してから
+          git add posted.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "記録する変更はありません"
+            exit 0
+          fi
+          git -c user.name="locoreach-bot" -c user.email="info@camomile.co.jp" \
+              commit -q -m "chore: Threads 投稿履歴を更新"
+          git push origin HEAD:${GITHUB_REF_NAME}

@@ -1,0 +1,42 @@
+name: SNSトークンを自動更新
+
+# Instagram / Threads の長期アクセストークンは60日で失効し、
+# 60日を過ぎるとプログラムからは復旧できない（再OAuthが必要）。
+# 週1回リフレッシュして Secrets を上書きし、手動更新をゼロにする。
+#
+# 同じトークンを Owned-Media 側も持っているので、両方のリポジトリを更新する。
+# 片方だけ更新すると、もう片方は60日で静かに止まる。
+#
+# 前提: トークンが発行から24時間以上経過していること（Meta側の仕様）。
+# 必要な権限: GH_PAT に Fine-grained PAT（両リポジトリの Secrets: Read and write）。
+on:
+  schedule:
+    - cron: "0 1 * * 1" # 毎週月曜 10:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+      SECRET_REPOS: ${{ vars.SECRET_REPOS || 'garut5/locoreach-autopost,garut5/Owned-Media' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instagram のトークンを更新
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+        run: python3 scripts/refresh_tokens.py instagram
+
+      - name: Threads のトークンを更新
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+        run: python3 scripts/refresh_tokens.py threads
