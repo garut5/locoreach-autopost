@@ -21,5 +21,6 @@ jobs:
       - name: Post to Instagram
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: python post.py
