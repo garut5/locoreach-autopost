@@ -40,7 +40,19 @@ jobs:
           # 入力は env 経由で渡す（run: に ${{ }} を直接書かない）
           IN_DRY_RUN: ${{ inputs.dry_run }}
           IN_DAY: ${{ inputs.day }}
+          IN_EVENT: ${{ github.event_name }}
+          IN_ENABLED: ${{ vars.X_ENABLED }}
         run: |
           ARGS=(--day "$IN_DAY")
-          [ "$IN_DRY_RUN" = "yes" ] && ARGS+=(--dry-run)
+          # 定期実行での投稿は vars.X_ENABLED=1 を入れるまで行わない。
+          # X は従量課金（PPU）なので、Secrets を入れた翌日から
+          # 気づかないうちに毎日課金される、という事故を防ぐ。
+          # 手動実行（workflow_dispatch）はこの制限を受けない。
+          if [ "$IN_EVENT" = "schedule" ] && [ "$IN_ENABLED" != "1" ]; then
+            echo "vars.X_ENABLED が 1 ではないため、定期実行では投稿しません。"
+            ARGS+=(--dry-run)
+          fi
+          if [ "$IN_DRY_RUN" = "yes" ]; then
+            ARGS+=(--dry-run)
+          fi
           python3 channels/x.py "${ARGS[@]}"
