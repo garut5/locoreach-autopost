@@ -14,6 +14,11 @@ on:
         type: choice
         options: [voicevox, none]
         default: voicevox
+      format:
+        description: "short=1コツ・約25秒（推奨） / full=カルーセル10枚・約70秒"
+        type: choice
+        options: [short, full]
+        default: short
       preview:
         description: "ブラウザで見られるURLを出す（R2 に置くだけ。SNSには投稿しない）"
         type: choice
@@ -42,7 +47,7 @@ jobs:
       - name: 依存パッケージ
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          sudo apt-get install -y -qq ffmpeg fonts-noto-cjk
           pip install --quiet numpy Pillow
 
       - name: VOICEVOX の起動を待つ
@@ -57,24 +62,40 @@ jobs:
           done
           echo "VOICEVOX が起動しませんでした"; exit 1
 
+      # ショートは1コツに絞った専用カードを描く。カルーセルの10枚は
+      # 表紙と目次に冒頭2秒を使ってしまい、リールでは見られないため。
+      - name: ショート用のカードを描く
+        if: ${{ inputs.format == 'short' }}
+        env:
+          IN_DAY: ${{ inputs.day }}
+        run: |
+          DAY="${IN_DAY:-$(TZ=Asia/Tokyo date +%a | tr 'A-Z' 'a-z')}"
+          python3 video/short.py --day "$DAY"
+          python3 video/cards.py --day "$DAY" --outdir out/cards
+
       - name: ナレーション音声を合成
         if: ${{ inputs.narration == 'voicevox' }}
         env:
           VOICEVOX_URL: http://127.0.0.1:50021
           VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
           IN_DAY: ${{ inputs.day }}
-        run: python3 video/narrate.py --day "$IN_DAY" --outdir out/voice
+          IN_FORMAT: ${{ inputs.format }}
+        run: python3 video/narrate.py --day "$IN_DAY" --outdir out/voice --format "${IN_FORMAT:-short}"
 
       - name: 動画を作る
         env:
           IN_DAY: ${{ inputs.day }}
+          IN_FORMAT: ${{ inputs.format }}
         run: |
           mkdir -p out
-          if [ -f out/voice/manifest.json ]; then
-            python3 video/build.py --day "$IN_DAY" --out out/reel.mp4 --narration-dir out/voice
-          else
-            python3 video/build.py --day "$IN_DAY" --out out/reel.mp4
+          ARGS=(--day "$IN_DAY" --out out/reel.mp4)
+          if [ "${IN_FORMAT:-short}" = "short" ]; then
+            ARGS+=(--slides-dir out/cards)
           fi
+          if [ -f out/voice/manifest.json ]; then
+            ARGS+=(--narration-dir out/voice)
+          fi
+          python3 video/build.py "${ARGS[@]}"
 
       - name: 生成物を確認
         run: |
@@ -98,9 +119,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           IN_DAY: ${{ inputs.day }}
+          IN_FORMAT: ${{ inputs.format }}
         run: |
           DAY="${IN_DAY:-$(TZ=Asia/Tokyo date +%a | tr 'A-Z' 'a-z')}"
-          NAME="preview-${DAY}-${GITHUB_RUN_NUMBER}.mp4"
+          NAME="preview-${DAY}-${IN_FORMAT:-short}-${GITHUB_RUN_NUMBER}.mp4"
           python3 video/upload.py --file out/reel.mp4 --name "$NAME"
           {
             echo "## 確認用"

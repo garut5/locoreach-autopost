@@ -74,13 +74,21 @@ def audio_duration(path: Path) -> float:
     return int(h) * 3600 + int(mi) * 60 + float(sec)
 
 
-def fetch(urls: list[str], dest: Path) -> list[Path]:
+def fetch(sources: list[str], dest: Path) -> list[Path]:
+    """素材を1か所に集める。URL でもローカルのパスでもよい。
+
+    ショート（video/cards.py が描くカード）はローカルに出るので、
+    ここで両方を受けられるようにしてある。
+    """
     paths = []
-    for i, u in enumerate(urls):
+    for i, u in enumerate(sources):
         p = dest / f"s{i:02d}.png"
-        req = urllib.request.Request(u, headers={"User-Agent": "locoreach-reels/1.0"})
-        with urllib.request.urlopen(req, timeout=60) as res, open(p, "wb") as f:
-            f.write(res.read())
+        if u.startswith("http://") or u.startswith("https://"):
+            req = urllib.request.Request(u, headers={"User-Agent": "locoreach-reels/1.0"})
+            with urllib.request.urlopen(req, timeout=60) as res, open(p, "wb") as f:
+                f.write(res.read())
+        else:
+            shutil.copyfile(u, p)
         paths.append(p)
     return paths
 
@@ -221,6 +229,8 @@ def main() -> int:
     ap.add_argument("--out", required=True, help="出力する mp4 のパス")
     ap.add_argument("--narration-dir", dest="narration_dir",
                     help="narrate.py が書き出した音声の入ったディレクトリ（省略時はBGMのみ）")
+    ap.add_argument("--slides-dir", dest="slides_dir",
+                    help="素材の PNG が入ったディレクトリ。指定するとカルーセル画像の代わりに使う")
     args = ap.parse_args()
 
     content = json.loads((ROOT / "content.json").read_text(encoding="utf-8"))
@@ -239,9 +249,15 @@ def main() -> int:
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    print(f"[{key}] {item.get('genre')} / 画像 {len(item['image_urls'])}枚")
+    if args.slides_dir:
+        sources = [str(p) for p in sorted(Path(args.slides_dir).glob("*.png"))]
+        if not sources:
+            sys.exit(f"素材がありません: {args.slides_dir}")
+    else:
+        sources = item["image_urls"]
+    print(f"[{key}] {item.get('genre')} / 素材 {len(sources)}枚")
     nar = Path(args.narration_dir) if args.narration_dir else None
-    path, dur = build(item["image_urls"], out, nar)
+    path, dur = build(sources, out, nar)
     size = os.path.getsize(path) / 1024 / 1024
     print(f"✓ {path}  {dur:.1f}秒  {size:.1f}MB")
     return 0

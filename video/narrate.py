@@ -40,6 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import script  # noqa: E402
+import short  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -208,6 +209,8 @@ def main() -> int:
     ap.add_argument("--day")
     ap.add_argument("--outdir", required=True, help="スライドごとの音声を書き出す先")
     ap.add_argument("--print-only", action="store_true", help="原稿だけ出して合成しない")
+    ap.add_argument("--format", dest="fmt", choices=["full", "short"], default="full",
+                    help="full=カルーセル10枚ぶん / short=1コツに絞った5枚ぶん")
     args = ap.parse_args()
 
     if args.day:
@@ -218,8 +221,8 @@ def main() -> int:
         jst = datetime.timezone(datetime.timedelta(hours=9))
         key = WEEKDAYS[datetime.datetime.now(jst).weekday()]
 
-    lines = script.lines_for(key)
-    print(f"[{key}] スライド {len(lines)} 枚ぶんの原稿")
+    lines = short.narration_for(key) if args.fmt == "short" else script.lines_for(key)
+    print(f"[{key}] {args.fmt} / スライド {len(lines)} 枚ぶんの原稿")
     for i, line in enumerate(lines, 1):
         print(f"  {i:2}枚目 {line}")
     if args.print_only:
