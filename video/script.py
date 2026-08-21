@@ -37,9 +37,20 @@ ORDINAL = ["ひとつめ", "ふたつめ", "みっつめ", "よっつめ", "い�
 # 読み上げに向かない記号を落とす
 _DROP = re.compile(r'[“”"「」『』（）()【】\[\]]')
 
+# 読み方だけを置き換える表。**画面に出る文字は変えない**。
+# 略語は画面では短いほうが読みやすいが、音では正しく言ってほしい。
+# HP は「エイチピー」ではなく「ホームページ」と読む。
+# Q&A は下の & → と の置換で「QとA」になってしまうため、ここで先に潰す。
+READING = {
+    "Q&A": "キューアンドエー",
+    "HP": "ホームページ",
+}
+_READ = re.compile("|".join(re.escape(k) for k in sorted(READING, key=len, reverse=True)))
+
 
 def clean(text: str) -> str:
     text = _DROP.sub("", text)
+    text = _READ.sub(lambda m: READING[m.group(0)], text)
     text = text.replace("＋", "と").replace("&", "と").replace("／", "、")
     text = re.sub(r"\s+", " ", text).strip()
     return text
