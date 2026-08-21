@@ -14,6 +14,11 @@ on:
         type: choice
         options: [voicevox, none]
         default: voicevox
+      preview:
+        description: "ブラウザで見られるURLを出す（R2 に置くだけ。SNSには投稿しない）"
+        type: choice
+        options: [ "yes", "no" ]
+        default: "yes"
 
 jobs:
   build:
@@ -83,3 +88,24 @@ jobs:
           name: reel
           path: out/
           retention-days: 7
+
+      # Artifacts は zip でしか落とせず、その場で再生できない。
+      # 確認のためだけに R2 へ置き、media.camomile.co.jp から直接見られるようにする。
+      # ここは投稿処理を一切呼ばない。キャッシュが immutable なので実行ごとに別名にする。
+      - name: 確認用URLを出す
+        if: ${{ inputs.preview == 'yes' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          IN_DAY: ${{ inputs.day }}
+        run: |
+          DAY="${IN_DAY:-$(TZ=Asia/Tokyo date +%a | tr 'A-Z' 'a-z')}"
+          NAME="preview-${DAY}-${GITHUB_RUN_NUMBER}.mp4"
+          python3 video/upload.py --file out/reel.mp4 --name "$NAME"
+          {
+            echo "## 確認用"
+            echo ""
+            echo "https://media.camomile.co.jp/reels/$NAME"
+            echo ""
+            echo "ブラウザで開けばそのまま再生できます（投稿はされていません）。"
+          } >> "$GITHUB_STEP_SUMMARY"
