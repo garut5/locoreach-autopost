@@ -23,6 +23,7 @@ CLAUDE.md の「ネイビー系と橙・琥珀系を使わない」は絶対の�
 """
 from __future__ import annotations
 
+import argparse
 import colorsys
 import sys
 from pathlib import Path
@@ -114,10 +115,13 @@ def strip(src: Path, dst: Path) -> tuple[int, int]:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print(f"usage: {sys.argv[0]} <入力ディレクトリ> <出力ディレクトリ>", file=sys.stderr)
-        return 2
-    src_dir, dst_dir = Path(sys.argv[1]), Path(sys.argv[2])
+    ap = argparse.ArgumentParser()
+    ap.add_argument("src_dir")
+    ap.add_argument("dst_dir")
+    ap.add_argument("--from", dest="from_tag", default="v2", help="元の版のタグ")
+    ap.add_argument("--to", dest="to_tag", default="v3", help="書き出す版のタグ")
+    args = ap.parse_args()
+    src_dir, dst_dir = Path(args.src_dir), Path(args.dst_dir)
     files = sorted(p for p in src_dir.iterdir() if p.suffix.lower() in (".png", ".jpg"))
     if not files:
         print(f"画像がありません: {src_dir}", file=sys.stderr)
@@ -126,7 +130,7 @@ def main() -> int:
     ta = tn = 0
     for p in files:
         # v2 → v3。immutable キャッシュなので同じ名前で上書きできない
-        out = dst_dir / p.name.replace("v2_", "v3_")
+        out = dst_dir / p.name.replace(f"{args.from_tag}_", f"{args.to_tag}_")
         a, n = strip(p, out)
         ta += a
         tn += n

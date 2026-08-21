@@ -9,6 +9,14 @@ name: SNS画像から禁止色を抜いて置き直す
 on:
   workflow_dispatch:
     inputs:
+      from_tag:
+        description: "取得元の版（例 v2）"
+        required: false
+        default: "v2"
+      to_tag:
+        description: "書き出す版（例 v3）"
+        required: false
+        default: "v3"
       upload:
         description: "R2 に置く（no なら検査と生成だけ）"
         type: choice
@@ -29,29 +37,41 @@ jobs:
       - name: 依存パッケージ
         run: pip install --quiet numpy Pillow
 
-      - name: 公開中の画像を取ってくる
+      - name: 元の画像を取ってくる
+        env:
+          # content.json は既に新しい版を指しているので、そのまま取りに行くと
+          # まだ存在しないファイルを叩いて 404 になる。元の版に読み替えて取る。
+          FROM_TAG: ${{ inputs.from_tag }}
+          TO_TAG: ${{ inputs.to_tag }}
         run: |
-          mkdir -p work/v2
+          mkdir -p work/src
           python3 - <<'PY'
-          import json, pathlib, urllib.request
+          import json, os, pathlib, urllib.request
+
+          frm, to = os.environ["FROM_TAG"], os.environ["TO_TAG"]
           content = json.loads(pathlib.Path("content.json").read_text(encoding="utf-8"))
           urls = []
           for day in content.values():
               urls += day.get("image_urls", [])
               if day.get("story_url"):
                   urls.append(day["story_url"])
+
           seen = set()
           for u in urls:
-              name = u.rsplit("/", 1)[-1]
+              src = u.replace(f"{to}_", f"{frm}_")
+              name = src.rsplit("/", 1)[-1]
               if name in seen:
                   continue
               seen.add(name)
-              urllib.request.urlretrieve(u, f"work/v2/{name}")
-          print(f"{len(seen)} 枚を取得しました")
+              urllib.request.urlretrieve(src, f"work/src/{name}")
+          print(f"{len(seen)} 枚を {frm} から取得しました")
           PY
 
       - name: 禁止色を抜く
-        run: python3 tools/strip_banned_hues.py work/v2 work/v3
+        env:
+          FROM_TAG: ${{ inputs.from_tag }}
+          TO_TAG: ${{ inputs.to_tag }}
+        run: python3 tools/strip_banned_hues.py work/src work/out --from "$FROM_TAG" --to "$TO_TAG"
 
       - name: 結果を検査する
         run: |
@@ -72,7 +92,7 @@ jobs:
               return np.nan_to_num((h / 6) % 1) * 360, l, np.nan_to_num(s)
 
           bad = []
-          for p in sorted(glob.glob("work/v3/*.png")):
+          for p in sorted(glob.glob("work/out/*.png")):
               arr = np.asarray(Image.open(p).convert("RGB"), dtype=np.float32) / 255
               h, l, s = hls(arr)
               amber = ((s >= 0.20) & (l >= 0.10) & (h >= 15) & (h <= 55)).sum()
@@ -84,13 +104,13 @@ jobs:
               for p, a, n in bad:
                   print(f"✗ {p} 橙{a}px ネイビー{n}px")
               sys.exit("禁止色が残っています。置き直しを中止します。")
-          print(f"✓ {len(glob.glob('work/v3/*.png'))} 枚、禁止色はありません")
+          print(f"✓ {len(glob.glob('work/out/*.png'))} 枚、禁止色はありません")
           PY
 
       - uses: actions/upload-artifact@v4
         with:
           name: recolored
-          path: work/v3
+          path: work/out
           retention-days: 7
 
       - name: R2 に置く
@@ -98,12 +118,13 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: python3 tools/upload_r2.py work/v3 --prefix sns
+        run: python3 tools/upload_r2.py work/out --prefix sns
 
       - name: 配信されるか確かめる
         if: ${{ inputs.upload == 'yes' }}
         run: |
-          for n in hpv3_01 hpv3_04 meov3_01 igv3_story; do
+          T="${{ inputs.to_tag }}"
+          for n in "hp${T}_01" "hp${T}_04" "meo${T}_01" "ig${T}_story"; do
             CODE=$(curl -sS -o /dev/null -w '%{http_code}' "https://media.camomile.co.jp/sns/$n.png")
             echo "  $n.png → HTTP $CODE"
             [ "$CODE" = "200" ] || exit 1
