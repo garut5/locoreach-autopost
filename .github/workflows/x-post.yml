@@ -1,0 +1,43 @@
+name: X へ画像付きで投稿する
+
+# 認証情報が未設定のあいだは何もせずに終わる（無害な空振り）。
+# Secrets を入れた翌日から自動で動き出す。
+# 既存の post.yml（Instagram／Threads）とは別ジョブなので、互いに影響しない。
+on:
+  schedule:
+    # 11:00 UTC = 20:00 JST。GitHub の cron は実測で20〜30分ほど遅れる
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "曜日キー（mon〜sun）。空なら当日"
+        required: false
+        default: ""
+      dry_run:
+        description: "内容の確認だけして投稿しない"
+        type: choice
+        options: ["no", "yes"]
+        default: "yes"
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: X へ投稿
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+          X_LINK: ${{ vars.X_LINK || 'https://media.camomile.co.jp/' }}
+        run: |
+          FLAG=""
+          if [ "${{ inputs.dry_run }}" = "yes" ]; then FLAG="--dry-run"; fi
+          python3 channels/x.py --day "${{ inputs.day }}" $FLAG

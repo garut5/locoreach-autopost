@@ -1,4 +1,4 @@
-name: リール動画を作って投稿する
+name: 縦動画を作って投稿する（Reels / ショート / TikTok）
 
 # 当面は手動実行のみ。publish の既定は no（作るだけ・投稿しない）。
 # 中身を Artifacts で確認してから publish=yes に切り替える運用。
@@ -16,10 +16,15 @@ on:
         options: [voicevox, none]
         default: voicevox
       publish:
-        description: "Instagram へ実際に投稿する"
+        description: "実際に投稿する（no なら内容の確認だけ）"
         type: choice
         options: ["no", "yes"]
         default: "no"
+      targets:
+        description: "投稿先"
+        type: choice
+        options: [all, instagram, youtube, tiktok]
+        default: all
 
 jobs:
   reel:
@@ -125,7 +130,7 @@ jobs:
           echo "配信URLが 200 を返しません: $URL"; exit 1
 
       - name: Instagram Reels へ投稿
-        if: ${{ steps.upload.outputs.video_url != '' }}
+        if: ${{ (inputs.targets == 'all' || inputs.targets == 'instagram') && steps.upload.outputs.video_url != '' }}
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -137,6 +142,35 @@ jobs:
           else
             python3 video/publish.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" --dry-run
           fi
+
+      - name: YouTube ショートへ投稿
+        if: ${{ inputs.targets == 'all' || inputs.targets == 'youtube' }}
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: ${{ vars.YT_PRIVACY || 'public' }}
+          NARRATION_USED: ${{ steps.build.outputs.narration_used }}
+          TTS_CREDIT: ${{ vars.TTS_CREDIT || 'VOICEVOX:ずんだもん' }}
+        run: |
+          FLAG="--dry-run"
+          if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
+          python3 channels/youtube.py --day "${{ steps.name.outputs.day }}" --file out/reel.mp4 $FLAG
+
+      - name: TikTok へ投稿
+        if: ${{ (inputs.targets == 'all' || inputs.targets == 'tiktok') && steps.upload.outputs.video_url != '' }}
+        env:
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+          TIKTOK_MODE: ${{ vars.TIKTOK_MODE || 'inbox' }}
+          TIKTOK_PRIVACY: ${{ vars.TIKTOK_PRIVACY }}
+          NARRATION_USED: ${{ steps.build.outputs.narration_used }}
+          TTS_CREDIT: ${{ vars.TTS_CREDIT || 'VOICEVOX:ずんだもん' }}
+        run: |
+          FLAG="--dry-run"
+          if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
+          python3 channels/tiktok.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
 
       - name: R2 が未設定のとき
         if: ${{ steps.upload.outputs.video_url == '' }}
