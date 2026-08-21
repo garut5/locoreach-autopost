@@ -119,12 +119,14 @@ def main():
         return
     urls = item["image_urls"]
     caption = item["caption"]
+    # ストーリーズ専用画像（9:16）。未設定なら従来どおりフィード1枚目を流用する。
+    story_url = item.get("story_url") or urls[0]
     print(f" → ジャンル: {item.get('genre')} / 画像 {len(urls)}枚")
 
     if DRY:
         print("[DRY_RUN] 投稿しません。予定内容:")
         print(f"  IGフィード: カルーセル{len(urls)}枚 + キャプション")
-        print(f"  IGストーリーズ: 表紙 {urls[0]}")
+        print(f"  IGストーリーズ: {'専用9:16' if item.get('story_url') else 'フィード1枚目の流用'} {story_url}")
         print(f"  Threads: カルーセル{len(urls)}枚 + テキスト（{len(threads_text(caption))}字）")
         print("--- caption ---")
         print(caption)
@@ -138,7 +140,8 @@ def main():
             uid = post_ig_feed(urls, caption)
             results["ig_feed"] = "OK"
             try:
-                post_ig_story(uid, urls[0])
+                # ストーリーズ専用画像があればそれを使う（無ければ従来どおり1枚目）
+                post_ig_story(uid, story_url)
                 results["ig_story"] = "OK"
             except Exception as e:
                 results["ig_story"] = f"NG: {e}"
