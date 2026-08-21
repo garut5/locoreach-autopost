@@ -36,6 +36,9 @@ XFADE = 0.5         # クロスフェードの秒数
 ZOOM = 1.08         # Ken Burns の最終倍率
 BITRATE = "3M"
 BGM_GAIN_WITH_NARRATION = 0.28   # ナレーションを載せるときのBGM音量
+MIN_HOLD = 2.0                   # どんなに短い読み上げでもこれ以上は映す
+SLIDE_PAD = 0.5                  # 読み終わってから切り替わるまでの余白
+NARRATION_LEAD = 0.35            # スライドが出てから読み始めるまでの間
 BG = "#14171A"      # ブランドの Primary。旧ネイビーは使わない
 
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -82,7 +85,7 @@ def fetch(urls: list[str], dest: Path) -> list[Path]:
     return paths
 
 
-def filtergraph(n: int, hold: float) -> str:
+def filtergraph(n: int, holds: list[float]) -> str:
     """
     各画像を 1080x1920 の背景に載せ、ゆっくり寄せながら次へ溶かす。
 
@@ -90,43 +93,74 @@ def filtergraph(n: int, hold: float) -> str:
     全体の尺は n*HOLD - (n-1)*XFADE になる。
     """
     parts = []
-    for i in range(n):
+    for i, hold in enumerate(holds):
+        # ズームの速さは1枚ごとに変える。長く映るスライドで同じ速さにすると
+        # 拡大しきってしまい、そこだけ動きが止まって見えるため。
+        step = (ZOOM - 1) / (hold * FPS)
         parts.append(
             # 元は 1080x1350。上下に余白を作って 9:16 に収め、拡大しながら見せる
             f"[{i}:v]scale={VW}:-1,"
             f"pad={VW}:{VH}:(ow-iw)/2:(oh-ih)/2:color={BG},"
-            f"zoompan=z='min(zoom+{(ZOOM - 1) / (hold * FPS):.6f},{ZOOM})':"
+            f"zoompan=z='min(zoom+{step:.6f},{ZOOM})':"
             f"d={int(hold * FPS)}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={VW}x{VH}:fps={FPS},"
             f"setsar=1[v{i}]"
         )
     chain = "[v0]"
+    starts = slide_starts(holds)
     for k in range(n - 1):
-        offset = (k + 1) * (hold - XFADE)
+        # k+1 枚目が出てくる時刻。各スライドの長さが違うので、
+        # 開始時刻を積み上げて求める（固定秒だった頃は (k+1)*(hold-XFADE) で済んだ）
+        offset = starts[k + 1] - XFADE
         out = f"[x{k}]" if k < n - 2 else "[vout]"
-        parts.append(f"{chain}[v{k + 1}]xfade=transition=fade:duration={XFADE}:offset={offset:.3f}{out}")
+        parts.append(
+            f"{chain}[v{k + 1}]xfade=transition=fade:duration={XFADE}:offset={offset:.3f}{out}"
+        )
         chain = out
     if n == 1:
         parts.append("[v0]null[vout]")
     return ";".join(parts)
 
 
-def build(urls: list[str], out: Path, narration: Path | None = None) -> tuple[Path, float]:
+def slide_starts(holds: list[float]) -> list[float]:
+    """各スライドが出てくる時刻。重なる分（XFADE）だけ前に詰める。"""
+    starts, t = [], 0.0
+    for h in holds:
+        starts.append(t)
+        t += h - XFADE
+    return starts
+
+
+def total_duration(holds: list[float]) -> float:
+    return sum(holds) - XFADE * (len(holds) - 1)
+
+
+def build(urls: list[str], out: Path, narration_dir: Path | None = None) -> tuple[Path, float]:
+    """縦動画を作る。
+
+    ナレーションがあるときは、**各スライドの表示時間をその音声の長さで決める**。
+    以前は1枚2.4秒の固定で、音声とは無関係に画像を送っていたため、
+    読み上げている内容と映っているスライドが噛み合わなかった。
+    """
     n = len(urls)
     if n < 2:
         sys.exit("画像が2枚以上必要です。")
 
-    hold = HOLD
-    duration = n * hold - (n - 1) * XFADE
+    manifest = None
+    if narration_dir is not None and (narration_dir / "manifest.json").exists():
+        manifest = json.loads((narration_dir / "manifest.json").read_text(encoding="utf-8"))
+        if len(manifest) != n:
+            sys.exit(
+                f"ナレーションが {len(manifest)} 枚ぶん、画像が {n} 枚あります。"
+                "数が合わないとずれるので中止します。"
+            )
 
-    # ナレーションが動画より長いと途中で切れるので、1枚あたりの表示時間を伸ばして合わせる。
-    # 逆に短い場合は無音で埋まる（BGMは最後まで鳴る）。
-    if narration is not None and narration.exists():
-        nd = audio_duration(narration)
-        need = nd + 1.2  # 読み終わりの余韻
-        if need > duration:
-            hold = (need + (n - 1) * XFADE) / n
-            duration = n * hold - (n - 1) * XFADE
-            print(f"  ナレーション {nd:.1f}秒に合わせて尺を {duration:.1f}秒に延長")
+    if manifest:
+        # 読み終わってすぐ切り替わると詰まって聞こえるので、後ろに余白を足す。
+        # クロスフェードで重なる分も足しておかないと、次の音声に食い込む。
+        holds = [max(MIN_HOLD, m["seconds"] + SLIDE_PAD + XFADE) for m in manifest]
+    else:
+        holds = [HOLD] * n
+    duration = total_duration(holds)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmpd = Path(tmp)
@@ -139,20 +173,25 @@ def build(urls: list[str], out: Path, narration: Path | None = None) -> tuple[Pa
         )
 
         cmd = [ffmpeg_bin(), "-y", "-hide_banner", "-loglevel", "error"]
-        for p in slides:
+        for p, hold in zip(slides, holds):
             cmd += ["-loop", "1", "-t", f"{hold:.2f}", "-i", str(p)]
         cmd += ["-i", str(bgm)]
-        graph = filtergraph(n, hold)
+        graph = filtergraph(n, holds)
 
-        if narration is not None and narration.exists():
-            # BGMを絞ってナレーションを前に出す。長い方に合わせる（切らない）。
-            cmd += ["-i", str(narration)]
+        if manifest:
+            starts = slide_starts(holds)
+            # スライドが出た少し後に読み始める。頭から重ねると切り替えに埋もれる
+            for i, m in enumerate(manifest):
+                cmd += ["-i", str(narration_dir / f"slide_{m['index']:02d}.wav")]
+                delay = int((starts[i] + NARRATION_LEAD) * 1000)
+                graph += f";[{n + 1 + i}:a]adelay={delay}|{delay}[nr{i}]"
+            mixed = "".join(f"[nr{i}]" for i in range(n))
+            graph += f";{mixed}amix=inputs={n}:duration=longest:dropout_transition=0:normalize=0[voice]"
             graph += (
                 f";[{n}:a]volume={BGM_GAIN_WITH_NARRATION}[bg]"
-                f";[{n + 1}:a]volume=1.0,adelay=600|600[nr]"
                 # amix は既定で入力数だけ音量を割るため normalize=0 で無効化する。
                 # 有効のままだと全体が半分（約-6dB）になり、実測で -26dB まで落ちた。
-                f";[bg][nr]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,"
+                f";[bg][voice]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,"
                 f"alimiter=limit=0.95,aresample=44100[aout]"
             )
             amap = "[aout]"
@@ -180,7 +219,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--day", help="曜日キー（mon〜sun）。省略時は今日")
     ap.add_argument("--out", required=True, help="出力する mp4 のパス")
-    ap.add_argument("--narration", help="ナレーション音声（省略時はBGMのみ）")
+    ap.add_argument("--narration-dir", dest="narration_dir",
+                    help="narrate.py が書き出した音声の入ったディレクトリ（省略時はBGMのみ）")
     args = ap.parse_args()
 
     content = json.loads((ROOT / "content.json").read_text(encoding="utf-8"))
@@ -200,7 +240,7 @@ def main() -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     print(f"[{key}] {item.get('genre')} / 画像 {len(item['image_urls'])}枚")
-    nar = Path(args.narration) if args.narration else None
+    nar = Path(args.narration_dir) if args.narration_dir else None
     path, dur = build(item["image_urls"], out, nar)
     size = os.path.getsize(path) / 1024 / 1024
     print(f"✓ {path}  {dur:.1f}秒  {size:.1f}MB")

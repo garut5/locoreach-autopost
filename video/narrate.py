@@ -4,8 +4,11 @@
 
     python3 video/narrate.py --day fri --out /tmp/narration.wav
 
-原稿は content.json の caption から機械的に組み立てる。
-別に原稿を書き起こす運用にすると、投稿本文と内容がずれるため。
+原稿は video/script.py が slide_copy.json から組み立てる。
+これは**画像を生成しているのと同じ原稿**なので、読み上げと画面が一致する。
+
+スライド1枚につき1ファイルを書き出し、それぞれの秒数を manifest.json に残す。
+build.py がその秒数どおりに画像を送るので、音と画がずれない。
 
 ## 音声合成のバックエンド
 環境変数で切り替える。どちらも未設定なら何もせず終了する（BGMのみの動画になる）。
@@ -32,7 +35,11 @@ import re
 import sys
 import urllib.parse
 import urllib.request
+import wave
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import script  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -166,15 +173,43 @@ def synth_google(text: str, key: str, out: Path) -> None:
     out.write_bytes(base64.b64decode(payload["audioContent"]))
 
 
+def wav_seconds(path: Path) -> float:
+    """WAV の再生時間。ffprobe を使わず、ヘッダから直接読む。"""
+    with wave.open(str(path), "rb") as w:
+        return w.getnframes() / float(w.getframerate())
+
+
+def synth(text: str, out: Path) -> bool:
+    """1行を合成する。合成できなければ False。"""
+    gkey = os.environ.get("GOOGLE_TTS_API_KEY", "").strip()
+    vurl = os.environ.get("VOICEVOX_URL", "").strip()
+    if gkey:
+        synth_google(text, gkey, out)
+        return True
+    if vurl:
+        name = os.environ.get("VOICEVOX_SPEAKER_NAME", "玄野武宏").strip()
+        style = os.environ.get("VOICEVOX_STYLE", "ノーマル").strip()
+        speaker = _SPEAKER_CACHE.get((name, style))
+        if speaker is None:
+            speaker = resolve_speaker(vurl, name, style) if name else None
+            if speaker is None:
+                speaker = int(os.environ.get("VOICEVOX_SPEAKER", "11"))
+            _SPEAKER_CACHE[(name, style)] = speaker
+        synth_voicevox(text, vurl, speaker, out)
+        return True
+    return False
+
+
+_SPEAKER_CACHE: dict[tuple[str, str], int] = {}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--day")
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--limit", type=int, default=150, help="読み上げ原稿の最大文字数")
-    ap.add_argument("--print-only", action="store_true", help="原稿だけ出力して合成しない")
+    ap.add_argument("--outdir", required=True, help="スライドごとの音声を書き出す先")
+    ap.add_argument("--print-only", action="store_true", help="原稿だけ出して合成しない")
     args = ap.parse_args()
 
-    content = json.loads((ROOT / "content.json").read_text(encoding="utf-8"))
     if args.day:
         key = args.day
     else:
@@ -183,37 +218,33 @@ def main() -> int:
         jst = datetime.timezone(datetime.timedelta(hours=9))
         key = WEEKDAYS[datetime.datetime.now(jst).weekday()]
 
-    item = content.get(key)
-    if not item:
-        print(f"{key} のコンテンツがありません。")
-        return 0
-
-    text = narration_text(item["caption"], args.limit)
-    print(f"[{key}] 原稿 {len(text)}文字:\n  {text}")
+    lines = script.lines_for(key)
+    print(f"[{key}] スライド {len(lines)} 枚ぶんの原稿")
+    for i, line in enumerate(lines, 1):
+        print(f"  {i:2}枚目 {line}")
     if args.print_only:
         return 0
 
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
 
-    gkey = os.environ.get("GOOGLE_TTS_API_KEY", "").strip()
-    vurl = os.environ.get("VOICEVOX_URL", "").strip()
+    manifest = []
+    for i, line in enumerate(lines, 1):
+        wav = outdir / f"slide_{i:02d}.wav"
+        if not synth(line, wav):
+            print("⚠ GOOGLE_TTS_API_KEY / VOICEVOX_URL が未設定のためナレーションをスキップします")
+            return 0
+        sec = wav_seconds(wav)
+        manifest.append({"index": i, "text": line, "seconds": round(sec, 3)})
+        print(f"  ✓ {wav.name}  {sec:5.2f}秒")
 
-    if gkey:
-        synth_google(text, gkey, out)
-        print(f"✓ Google Cloud TTS で合成 → {out}")
-    elif vurl:
-        name = os.environ.get("VOICEVOX_SPEAKER_NAME", "玄野武宏").strip()
-        style = os.environ.get("VOICEVOX_STYLE", "ノーマル").strip()
-        speaker = resolve_speaker(vurl, name, style) if name else None
-        if speaker is None:
-            speaker = int(os.environ.get("VOICEVOX_SPEAKER", "11"))
-        synth_voicevox(text, vurl, speaker, out)
-        print(f"✓ VOICEVOX（{name}／{style}／speaker={speaker}）で合成 → {out}")
-        print("  ※ VOICEVOX は商用利用可だがクレジット表記が必要です")
-    else:
-        print("⚠ GOOGLE_TTS_API_KEY / VOICEVOX_URL が未設定のためナレーションをスキップします")
-        return 0
+    (outdir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    total = sum(m["seconds"] for m in manifest)
+    print(f"\n合計 {total:.1f}秒 / {len(manifest)}枚 → {outdir}/manifest.json")
+    if os.environ.get("VOICEVOX_URL", "").strip() and not os.environ.get("GOOGLE_TTS_API_KEY", "").strip():
+        print("※ VOICEVOX は商用利用可だがクレジット表記が必要です")
     return 0
 
 

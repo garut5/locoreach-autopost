@@ -90,14 +90,14 @@ jobs:
           VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           mkdir -p out
-          python3 video/narrate.py --day "${{ steps.name.outputs.day }}" --out out/narration.wav
+          python3 video/narrate.py --day "${{ steps.name.outputs.day }}" --outdir out/voice
 
       - name: 動画を作る
         id: build
         run: |
           mkdir -p out
-          if [ -f out/narration.wav ]; then
-            python3 video/build.py --day "${{ steps.name.outputs.day }}" --out out/reel.mp4 --narration out/narration.wav
+          if [ -f out/voice/manifest.json ]; then
+            python3 video/build.py --day "${{ steps.name.outputs.day }}" --out out/reel.mp4 --narration-dir out/voice
             echo "narration_used=1" >> "$GITHUB_OUTPUT"
           else
             python3 video/build.py --day "${{ steps.name.outputs.day }}" --out out/reel.mp4
