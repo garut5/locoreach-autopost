@@ -33,7 +33,12 @@ Secrets を入れた翌日から、そのチャネルだけが動き出す。
 ### すでに入っているもの
 - `IG_TOKEN` — Instagram の長期トークン。リールもこれを使う
 - `THREADS_TOKEN` — Threads の長期トークン
-- `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` — R2 へ動画を置くため
+### まだ入っていないもの（R2 への書き込みに必要）
+- `CLOUDFLARE_API_TOKEN` — R2 の読み書き権限を持つトークン（Secret）
+- `CLOUDFLARE_ACCOUNT_ID` — `6fe48c4f35107804fce73411c36911fb`（Variable でよい）
+
+これが無いと、リール動画のアップロードも SNS画像の置き直しも
+**エラーにならずに黙ってスキップされる**。実行は緑のまま終わる。
 
 ### 移設にともなって、このリポジトリに要るもの
 `Owned-Media` 側にあった Secret を、こちらにも登録する。
