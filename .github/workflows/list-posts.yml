@@ -1,0 +1,27 @@
+name: 実際に載っているものを見る（読み取りのみ）
+
+# 「投稿したはず」ではなく、アカウント側に何があるかを API から読む。
+# 投稿も削除もしない。手動実行のみ。
+on:
+  workflow_dispatch:
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 一覧を出す
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+        run: |
+          python3 scripts/list_posts.py | tee out.txt
+          {
+            echo '```'
+            cat out.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
