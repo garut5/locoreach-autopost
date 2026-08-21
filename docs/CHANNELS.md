@@ -38,8 +38,9 @@ Secrets を入れた翌日から、そのチャネルだけが動き出す。
 `Owned-Media` 側にあった Secret を、こちらにも登録する。
 
 - `THREADS_USER_ID`（任意。未設定なら `/me` から自動取得する）
-- `GH_PAT` — Fine-grained PAT。**`locoreach-autopost` と `Owned-Media` の両方**に
-  Secrets: Read and write を与える。トークン更新がこの2つの Secret を書き換えるため
+- `GH_PAT` — Fine-grained PAT。**このリポジトリの Secrets: Read and write だけ**。
+  Repository access は `locoreach-autopost` 1本、権限は Secrets のみ。
+  コードの読み書き権限は与えないこと
 
 ## なぜ private の Actions を使わないのか
 
@@ -107,3 +108,52 @@ utm_content  = 曜日キー または 記事スラッグ
 リンク先の `media.camomile.co.jp` は流入元を sessionStorage に保存し、
 無料MEO診断フォームの hidden 項目として D1 の `leads` テーブルへ書き込む。
 どの媒体の投稿が問い合わせにつながったかは管理画面の「流入元」列で追える。
+
+
+---
+
+# このリポジトリが public であることについて
+
+`locoreach-autopost` は public、`Owned-Media` は private。
+public リポジトリの Actions は無料・無制限なので、定期実行はすべてこちらに置いている。
+
+## 何が見えて、何が見えないか
+
+見える：投稿スクリプト、`content.json`（投稿本文）、ワークフローの定義。
+どれも投稿すれば公開される内容か、その手順。
+
+**見えない：Secrets の値。** GitHub の Secrets はリポジトリが public でも
+暗号化されて保管され、Web でも API でも読み出せない。
+ワークフローのログに出そうとしても `***` に伏せられる。
+
+## 外部の人がワークフローを動かせないこと
+
+秘密情報が漏れる典型は「外部の人が起動できるワークフローに秘密情報を渡している」場合。
+このリポジトリの6本は **すべて `schedule` と `workflow_dispatch` だけ**で、
+`pull_request` / `pull_request_target` / `issue_comment` を使っているものは1本もない。
+
+- 誰でも fork して PR は出せるが、**PR ではワークフローが1本も起動しない**
+- `workflow_dispatch` を叩けるのは、このリポジトリへの書き込み権限がある人だけ
+
+新しいワークフローを足すときも、この2つ以外のトリガーを使わないこと。
+とくに `pull_request_target` は、fork の PR に Secrets を渡してしまうので使わない。
+
+## 入力をシェルに直接展開しないこと
+
+`run:` の中に `${{ inputs.day }}` のように書くと、入力文字列がそのまま
+シェルの一部として解釈される。`env:` で渡して `"$IN_DAY"` と参照する。
+`reel-post.yml` では、さらに曜日が `mon`〜`sun` のいずれかであることを検査している。
+
+## PAT を跨がせないこと
+
+`GH_PAT` に `Owned-Media`（private）の権限を与えてはいけない。
+public 側の Secret が漏れたときに、private 側を書き換えられる経路になる。
+定期実行はすべてこちらに移したので、`Owned-Media` 側のトークンは
+手動実行のときにしか使わない。
+
+## 定期的に見ること
+
+- Settings → Collaborators — 意図しない書き込み権限が増えていないか
+- Settings → Secrets — 使っていない Secret が残っていないか
+- 60日以上リポジトリに動きがないと、public リポジトリの schedule は
+  GitHub 側で自動的に止まる。毎日 `posted.json` が更新されるので通常は起きない

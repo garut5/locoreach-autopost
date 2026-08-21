@@ -41,12 +41,15 @@ jobs:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           FEED_URL: ${{ vars.FEED_URL || 'https://media.camomile.co.jp/feed.xml' }}
+          # 入力は env 経由で渡す。run: に ${{ }} を直接書くと、
+          # 入力文字列がシェルの一部として解釈されてしまうため。
+          IN_DRY_RUN: ${{ inputs.dry_run }}
+          IN_SLUG: ${{ inputs.slug }}
         run: |
-          FLAG=""
-          if [ "${{ inputs.dry_run }}" = "yes" ]; then FLAG="--dry-run"; fi
-          ARG=""
-          if [ -n "${{ inputs.slug }}" ]; then ARG="--slug ${{ inputs.slug }}"; fi
-          python3 scripts/promote.py $ARG $FLAG
+          ARGS=()
+          [ "$IN_DRY_RUN" = "yes" ] && ARGS+=(--dry-run)
+          [ -n "$IN_SLUG" ] && ARGS+=(--slug "$IN_SLUG")
+          python3 scripts/promote.py "${ARGS[@]}"
 
       - name: 投稿履歴を記録
         run: |

@@ -4,11 +4,16 @@ name: SNSトークンを自動更新
 # 60日を過ぎるとプログラムからは復旧できない（再OAuthが必要）。
 # 週1回リフレッシュして Secrets を上書きし、手動更新をゼロにする。
 #
-# 同じトークンを Owned-Media 側も持っているので、両方のリポジトリを更新する。
-# 片方だけ更新すると、もう片方は60日で静かに止まる。
-#
 # 前提: トークンが発行から24時間以上経過していること（Meta側の仕様）。
-# 必要な権限: GH_PAT に Fine-grained PAT（両リポジトリの Secrets: Read and write）。
+#
+# 必要な権限: GH_PAT は **このリポジトリの Secrets: Read and write だけ** を持つ
+# Fine-grained PAT にすること。
+#
+# private リポジトリ（Owned-Media）の Secret まで書ける PAT を、public の
+# ここに置いてはいけない。public リポジトリの Secret が漏れた場合に、
+# private 側の Secret を書き換えられる経路になるため。
+# Owned-Media 側のトークンは、定期実行が全部こちらへ移ったので、
+# 手動実行のときにしか使わない。必要になったら手で入れ直せばよい。
 on:
   schedule:
     - cron: "0 1 * * 1" # 毎週月曜 10:00 JST
@@ -23,7 +28,7 @@ jobs:
     timeout-minutes: 10
     env:
       GH_TOKEN: ${{ secrets.GH_PAT }}
-      SECRET_REPOS: ${{ vars.SECRET_REPOS || 'garut5/locoreach-autopost,garut5/Owned-Media' }}
+      SECRET_REPOS: ${{ vars.SECRET_REPOS || 'garut5/locoreach-autopost' }}
     steps:
       - uses: actions/checkout@v4
 

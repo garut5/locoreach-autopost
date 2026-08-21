@@ -53,11 +53,19 @@ jobs:
 
       - name: 曜日とファイル名を決める
         id: name
+        env:
+          IN_DAY: ${{ inputs.day }}
         run: |
-          DAY="${{ inputs.day }}"
+          DAY="$IN_DAY"
           if [ -z "$DAY" ]; then
             DAY=$(TZ=Asia/Tokyo date +%a | tr 'A-Z' 'a-z')
           fi
+          # ここで mon〜sun 以外を弾く。後段のステップは
+          # steps.name.outputs.day を使うので、入口で絞れば全体が守られる。
+          case "$DAY" in
+            mon|tue|wed|thu|fri|sat|sun) ;;
+            *) echo "曜日は mon〜sun のいずれかで指定してください: $DAY"; exit 1 ;;
+          esac
           STAMP=$(TZ=Asia/Tokyo date +%Y%m%d-%H%M)
           echo "day=$DAY" >> "$GITHUB_OUTPUT"
           echo "file=$STAMP-$DAY.mp4" >> "$GITHUB_OUTPUT"

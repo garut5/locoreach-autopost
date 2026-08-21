@@ -19,12 +19,13 @@ GitHub Actions の Secret を上書きする。
                              未設定なら GITHUB_REPOSITORY（実行中のリポジトリ）だけ
   GITHUB_REPOSITORY          Actions が自動で設定する owner/repo
 
-## なぜ複数リポジトリに書くのか
-同じ IG_TOKEN / THREADS_TOKEN を garut5/locoreach-autopost（毎日20:00の投稿）と
-garut5/Owned-Media（記事のThreads拡散）の両方が持っている。
-片方だけ更新すると、もう片方は60日で失効して静かに止まる。
-実際、以前は Owned-Media 側でしか更新しておらず、
-locoreach-autopost のトークンは一度も更新されていなかった。
+## なぜ複数リポジトリに書けるようにしてあるのか
+同じトークンを複数のリポジトリが持つ構成に対応するため。
+ただし **既定は実行中のリポジトリ1つだけ** にしてある。
+
+private リポジトリの Secret まで書ける権限を public リポジトリに置くと、
+public 側の Secret が漏れた場合に private 側を書き換えられる経路になる。
+SECRET_REPOS に別のリポジトリを足すときは、その経路を作ることになると理解して行うこと。
 """
 
 from __future__ import annotations

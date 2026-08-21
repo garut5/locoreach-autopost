@@ -37,7 +37,10 @@ jobs:
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
           X_LINK: ${{ vars.X_LINK || 'https://media.camomile.co.jp/' }}
+          # 入力は env 経由で渡す（run: に ${{ }} を直接書かない）
+          IN_DRY_RUN: ${{ inputs.dry_run }}
+          IN_DAY: ${{ inputs.day }}
         run: |
-          FLAG=""
-          if [ "${{ inputs.dry_run }}" = "yes" ]; then FLAG="--dry-run"; fi
-          python3 channels/x.py --day "${{ inputs.day }}" $FLAG
+          ARGS=(--day "$IN_DAY")
+          [ "$IN_DRY_RUN" = "yes" ] && ARGS+=(--dry-run)
+          python3 channels/x.py "${ARGS[@]}"

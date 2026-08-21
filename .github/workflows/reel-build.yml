@@ -57,15 +57,18 @@ jobs:
         env:
           VOICEVOX_URL: http://127.0.0.1:50021
           VOICEVOX_SPEAKER: "3"
-        run: python3 video/narrate.py --day "${{ inputs.day }}" --out out/narration.wav
+          IN_DAY: ${{ inputs.day }}
+        run: python3 video/narrate.py --day "$IN_DAY" --out out/narration.wav
 
       - name: 動画を作る
+        env:
+          IN_DAY: ${{ inputs.day }}
         run: |
           mkdir -p out
           if [ -f out/narration.wav ]; then
-            python3 video/build.py --day "${{ inputs.day }}" --out out/reel.mp4 --narration out/narration.wav
+            python3 video/build.py --day "$IN_DAY" --out out/reel.mp4 --narration out/narration.wav
           else
-            python3 video/build.py --day "${{ inputs.day }}" --out out/reel.mp4
+            python3 video/build.py --day "$IN_DAY" --out out/reel.mp4
           fi
 
       - name: 生成物を確認
