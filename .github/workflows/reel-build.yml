@@ -56,7 +56,7 @@ jobs:
         if: ${{ inputs.narration == 'voicevox' }}
         env:
           VOICEVOX_URL: http://127.0.0.1:50021
-          VOICEVOX_SPEAKER: "3"
+          VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
           IN_DAY: ${{ inputs.day }}
         run: python3 video/narrate.py --day "$IN_DAY" --out out/narration.wav
 

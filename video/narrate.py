@@ -11,6 +11,11 @@
 環境変数で切り替える。どちらも未設定なら何もせず終了する（BGMのみの動画になる）。
 
   VOICEVOX_URL        VOICEVOX ENGINE の URL（例 http://127.0.0.1:50021）
+  VOICEVOX_SPEAKER_NAME  話者名（例 「玄野武宏」「ずんだもん」）。
+                      ID は VOICEVOX のバージョンで変わりうるので、
+                      名前で引いて解決する。見つからなければ VOICEVOX_SPEAKER を使う
+  VOICEVOX_SPEAKER    話者ID。既定 11（玄野武宏 ノーマル）
+  VOICEVOX_STYLE      スタイル名。既定「ノーマル」
                       無料。日本語専用。商用利用可だが**クレジット表記が必要**。
   GOOGLE_TTS_API_KEY  Google Cloud Text-to-Speech の APIキー
                       1本あたり0.01円未満。クレジット表記は不要。
@@ -93,6 +98,37 @@ def narration_text(caption: str, limit: int) -> str:
     return assemble(False, 1)[:limit]
 
 
+def resolve_speaker(base: str, name: str, style: str) -> int | None:
+    """話者名とスタイル名から ID を引く。
+
+    VOICEVOX の話者IDはバージョンによって変わる。名前の方が安定しているので、
+    起動しているエンジンに問い合わせて解決する。
+    """
+    try:
+        req = urllib.request.Request(f"{base.rstrip('/')}/speakers",
+                                     headers={"User-Agent": "locoreach-reels/1.0"})
+        with urllib.request.urlopen(req, timeout=30) as res:
+            speakers = json.loads(res.read().decode())
+    except Exception as e:
+        print(f"  話者一覧を取得できませんでした（{e}）。IDの指定にフォールバックします")
+        return None
+
+    for sp in speakers:
+        if sp.get("name") != name:
+            continue
+        styles = sp.get("styles") or []
+        for st in styles:
+            if st.get("name") == style:
+                return int(st["id"])
+        if styles:  # 指定スタイルが無ければ先頭
+            print(f"  「{name}」に「{style}」が無いため「{styles[0].get('name')}」を使います")
+            return int(styles[0]["id"])
+
+    available = "、".join(sorted({sp.get("name", "") for sp in speakers})[:12])
+    print(f"  話者「{name}」が見つかりません。使えるのは: {available} ...")
+    return None
+
+
 def synth_voicevox(text: str, base: str, speaker: int, out: Path) -> None:
     q = urllib.request.Request(
         f"{base.rstrip('/')}/audio_query?" + urllib.parse.urlencode({"text": text, "speaker": speaker}),
@@ -167,9 +203,13 @@ def main() -> int:
         synth_google(text, gkey, out)
         print(f"✓ Google Cloud TTS で合成 → {out}")
     elif vurl:
-        speaker = int(os.environ.get("VOICEVOX_SPEAKER", "3"))
+        name = os.environ.get("VOICEVOX_SPEAKER_NAME", "玄野武宏").strip()
+        style = os.environ.get("VOICEVOX_STYLE", "ノーマル").strip()
+        speaker = resolve_speaker(vurl, name, style) if name else None
+        if speaker is None:
+            speaker = int(os.environ.get("VOICEVOX_SPEAKER", "11"))
         synth_voicevox(text, vurl, speaker, out)
-        print(f"✓ VOICEVOX（speaker={speaker}）で合成 → {out}")
+        print(f"✓ VOICEVOX（{name}／{style}／speaker={speaker}）で合成 → {out}")
         print("  ※ VOICEVOX は商用利用可だがクレジット表記が必要です")
     else:
         print("⚠ GOOGLE_TTS_API_KEY / VOICEVOX_URL が未設定のためナレーションをスキップします")

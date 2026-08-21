@@ -22,6 +22,7 @@ Secrets を入れた翌日から、そのチャネルだけが動き出す。
 | Instagram リール | `reel-post.yml` | 手動（既定は投稿しない） | 縦動画 |
 | YouTube ショート | `reel-post.yml` | 同上 | 縦動画 |
 | TikTok | `reel-post.yml` | 同上 | 縦動画 |
+| Threads（動画） | `reel-post.yml` | 同上 | 縦動画 |
 | X | `x-post.yml` | 毎日20:00（空振り中） | 画像4枚 |
 
 `reel-post.yml` は `publish=no` が既定。まず Artifacts で中身を確認し、
@@ -88,9 +89,13 @@ schedule を止め、手動実行用に残してある。
 
 ## 変数（Settings → Variables → Actions）
 
-- `TTS_CREDIT` — 既定 `VOICEVOX:ずんだもん`。
-  VOICEVOX は商用利用できるが**クレジット表記が必須**。声を変えたらここも変える。
-- `VOICEVOX_SPEAKER` — 話者ID。既定 `3`（ずんだもん ノーマル）
+- `VOICEVOX_SPEAKER_NAME` — 話者名。既定 `玄野武宏`。
+  **IDではなく名前で指定する。**IDは VOICEVOX のバージョンで変わるため、
+  起動しているエンジンに問い合わせて解決している。
+  他の候補: `ずんだもん` / `白上虎太郎` / `青山龍星` / `四国めたん`
+- `VOICEVOX_STYLE` — スタイル名。既定 `ノーマル`
+- クレジット表記は話者名から自動生成される（`VOICEVOX:玄野武宏`）。
+  VOICEVOX は商用利用できるが**表記が必須**。声を変えれば表記も自動で変わる
 - `X_LINK` / `YT_PRIVACY` / `TIKTOK_MODE` / `TIKTOK_PRIVACY`
 
 ## 誘導先と計測

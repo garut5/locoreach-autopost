@@ -1,4 +1,4 @@
-name: 縦動画を作って投稿する（Reels / ショート / TikTok）
+name: 縦動画を作って投稿する（Reels / ショート / TikTok / Threads）
 
 # 当面は手動実行のみ。publish の既定は no（作るだけ・投稿しない）。
 # 中身を Artifacts で確認してから publish=yes に切り替える運用。
@@ -23,7 +23,7 @@ on:
       targets:
         description: "投稿先"
         type: choice
-        options: [all, instagram, youtube, tiktok]
+        options: [all, instagram, youtube, tiktok, threads]
         default: all
 
 jobs:
@@ -87,7 +87,7 @@ jobs:
         if: ${{ inputs.narration == 'voicevox' }}
         env:
           VOICEVOX_URL: http://127.0.0.1:50021
-          VOICEVOX_SPEAKER: ${{ vars.VOICEVOX_SPEAKER || '3' }}
+          VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           mkdir -p out
           python3 video/narrate.py --day "${{ steps.name.outputs.day }}" --out out/narration.wav
@@ -143,7 +143,7 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
-          TTS_CREDIT: ${{ vars.TTS_CREDIT || 'VOICEVOX:ずんだもん' }}
+          TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           if [ "${{ inputs.publish }}" = "yes" ]; then
             python3 video/publish.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}"
@@ -159,7 +159,7 @@ jobs:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           YT_PRIVACY: ${{ vars.YT_PRIVACY || 'public' }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
-          TTS_CREDIT: ${{ vars.TTS_CREDIT || 'VOICEVOX:ずんだもん' }}
+          TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
           if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
@@ -174,11 +174,23 @@ jobs:
           TIKTOK_MODE: ${{ vars.TIKTOK_MODE || 'inbox' }}
           TIKTOK_PRIVACY: ${{ vars.TIKTOK_PRIVACY }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
-          TTS_CREDIT: ${{ vars.TTS_CREDIT || 'VOICEVOX:ずんだもん' }}
+          TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
           if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
           python3 channels/tiktok.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
+
+      - name: Threads へ動画を投稿
+        if: ${{ (inputs.targets == 'all' || inputs.targets == 'threads') && steps.upload.outputs.video_url != '' }}
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          NARRATION_USED: ${{ steps.build.outputs.narration_used }}
+          TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
+        run: |
+          FLAG="--dry-run"
+          if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
+          python3 channels/threads_video.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
 
       - name: R2 が未設定のとき
         if: ${{ steps.upload.outputs.video_url == '' }}
