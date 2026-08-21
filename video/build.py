@@ -34,7 +34,8 @@ FPS = 30
 HOLD = 2.4          # 1枚あたりの表示秒
 XFADE = 0.5         # クロスフェードの秒数
 ZOOM = 1.08         # Ken Burns の最終倍率
-BITRATE = "3M"      # 24秒で約9MB。6Mだと18MBになり配信も遅い
+BITRATE = "3M"
+BGM_GAIN_WITH_NARRATION = 0.28   # ナレーションを載せるときのBGM音量
 BG = "#14171A"      # ブランドの Primary。旧ネイビーは使わない
 
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -53,6 +54,23 @@ def ffmpeg_bin() -> str:
         sys.exit("ffmpeg が見つかりません。apt install ffmpeg か pip install imageio-ffmpeg を実行してください。")
 
 
+def audio_duration(path: Path) -> float:
+    """ffmpeg で音声ファイルの長さを秒で得る（ffprobe が無い環境でも動くようにする）。"""
+    r = subprocess.run(
+        [ffmpeg_bin(), "-hide_banner", "-i", str(path), "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    import re as _re
+
+    m = None
+    for m in _re.finditer(r"time=(\d+):(\d+):(\d+\.\d+)", r.stderr):
+        pass
+    if not m:
+        return 0.0
+    h, mi, sec = m.groups()
+    return int(h) * 3600 + int(mi) * 60 + float(sec)
+
+
 def fetch(urls: list[str], dest: Path) -> list[Path]:
     paths = []
     for i, u in enumerate(urls):
@@ -64,7 +82,7 @@ def fetch(urls: list[str], dest: Path) -> list[Path]:
     return paths
 
 
-def filtergraph(n: int) -> str:
+def filtergraph(n: int, hold: float) -> str:
     """
     各画像を 1080x1920 の背景に載せ、ゆっくり寄せながら次へ溶かす。
 
@@ -77,13 +95,13 @@ def filtergraph(n: int) -> str:
             # 元は 1080x1350。上下に余白を作って 9:16 に収め、拡大しながら見せる
             f"[{i}:v]scale={VW}:-1,"
             f"pad={VW}:{VH}:(ow-iw)/2:(oh-ih)/2:color={BG},"
-            f"zoompan=z='min(zoom+{(ZOOM - 1) / (HOLD * FPS):.6f},{ZOOM})':"
-            f"d={int(HOLD * FPS)}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={VW}x{VH}:fps={FPS},"
+            f"zoompan=z='min(zoom+{(ZOOM - 1) / (hold * FPS):.6f},{ZOOM})':"
+            f"d={int(hold * FPS)}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={VW}x{VH}:fps={FPS},"
             f"setsar=1[v{i}]"
         )
     chain = "[v0]"
     for k in range(n - 1):
-        offset = (k + 1) * (HOLD - XFADE)
+        offset = (k + 1) * (hold - XFADE)
         out = f"[x{k}]" if k < n - 2 else "[vout]"
         parts.append(f"{chain}[v{k + 1}]xfade=transition=fade:duration={XFADE}:offset={offset:.3f}{out}")
         chain = out
@@ -92,11 +110,23 @@ def filtergraph(n: int) -> str:
     return ";".join(parts)
 
 
-def build(urls: list[str], out: Path) -> tuple[Path, float]:
+def build(urls: list[str], out: Path, narration: Path | None = None) -> tuple[Path, float]:
     n = len(urls)
     if n < 2:
         sys.exit("画像が2枚以上必要です。")
-    duration = n * HOLD - (n - 1) * XFADE
+
+    hold = HOLD
+    duration = n * hold - (n - 1) * XFADE
+
+    # ナレーションが動画より長いと途中で切れるので、1枚あたりの表示時間を伸ばして合わせる。
+    # 逆に短い場合は無音で埋まる（BGMは最後まで鳴る）。
+    if narration is not None and narration.exists():
+        nd = audio_duration(narration)
+        need = nd + 1.2  # 読み終わりの余韻
+        if need > duration:
+            hold = (need + (n - 1) * XFADE) / n
+            duration = n * hold - (n - 1) * XFADE
+            print(f"  ナレーション {nd:.1f}秒に合わせて尺を {duration:.1f}秒に延長")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmpd = Path(tmp)
@@ -110,11 +140,28 @@ def build(urls: list[str], out: Path) -> tuple[Path, float]:
 
         cmd = [ffmpeg_bin(), "-y", "-hide_banner", "-loglevel", "error"]
         for p in slides:
-            cmd += ["-loop", "1", "-t", f"{HOLD:.2f}", "-i", str(p)]
+            cmd += ["-loop", "1", "-t", f"{hold:.2f}", "-i", str(p)]
         cmd += ["-i", str(bgm)]
+        graph = filtergraph(n, hold)
+
+        if narration is not None and narration.exists():
+            # BGMを絞ってナレーションを前に出す。長い方に合わせる（切らない）。
+            cmd += ["-i", str(narration)]
+            graph += (
+                f";[{n}:a]volume={BGM_GAIN_WITH_NARRATION}[bg]"
+                f";[{n + 1}:a]volume=1.0,adelay=600|600[nr]"
+                # amix は既定で入力数だけ音量を割るため normalize=0 で無効化する。
+                # 有効のままだと全体が半分（約-6dB）になり、実測で -26dB まで落ちた。
+                f";[bg][nr]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,"
+                f"alimiter=limit=0.95,aresample=44100[aout]"
+            )
+            amap = "[aout]"
+        else:
+            amap = f"{n}:a"
+
         cmd += [
-            "-filter_complex", filtergraph(n),
-            "-map", "[vout]", "-map", f"{n}:a",
+            "-filter_complex", graph,
+            "-map", "[vout]", "-map", amap,
             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-profile:v", "high", "-level", "4.0",
             "-b:v", BITRATE, "-r", str(FPS),
             "-c:a", "aac", "-b:a", "128k",
@@ -133,6 +180,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--day", help="曜日キー（mon〜sun）。省略時は今日")
     ap.add_argument("--out", required=True, help="出力する mp4 のパス")
+    ap.add_argument("--narration", help="ナレーション音声（省略時はBGMのみ）")
     args = ap.parse_args()
 
     content = json.loads((ROOT / "content.json").read_text(encoding="utf-8"))
@@ -152,7 +200,8 @@ def main() -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     print(f"[{key}] {item.get('genre')} / 画像 {len(item['image_urls'])}枚")
-    path, dur = build(item["image_urls"], out)
+    nar = Path(args.narration) if args.narration else None
+    path, dur = build(item["image_urls"], out, nar)
     size = os.path.getsize(path) / 1024 / 1024
     print(f"✓ {path}  {dur:.1f}秒  {size:.1f}MB")
     return 0
