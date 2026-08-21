@@ -1,0 +1,110 @@
+name: SNS画像から禁止色を抜いて置き直す
+
+# 公開中の v2 画像を取ってきて、橙・琥珀系とネイビー系を中立化し、
+# v3 という別名で R2 に置く。手動実行のみ。
+#
+# 同じ名前で上書きしないのは、配信側が immutable キャッシュだから。
+# 上書きしても古い画像が返り続ける。別名にすれば確実に切り替わり、
+# 旧画像も残るので content.json を戻すだけで切り戻せる。
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "R2 に置く（no なら検査と生成だけ）"
+        type: choice
+        options: ["no", "yes"]
+        default: "no"
+
+jobs:
+  recolor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 依存パッケージ
+        run: pip install --quiet numpy Pillow
+
+      - name: 公開中の画像を取ってくる
+        run: |
+          mkdir -p work/v2
+          python3 - <<'PY'
+          import json, pathlib, urllib.request
+          content = json.loads(pathlib.Path("content.json").read_text(encoding="utf-8"))
+          urls = []
+          for day in content.values():
+              urls += day.get("image_urls", [])
+              if day.get("story_url"):
+                  urls.append(day["story_url"])
+          seen = set()
+          for u in urls:
+              name = u.rsplit("/", 1)[-1]
+              if name in seen:
+                  continue
+              seen.add(name)
+              urllib.request.urlretrieve(u, f"work/v2/{name}")
+          print(f"{len(seen)} 枚を取得しました")
+          PY
+
+      - name: 禁止色を抜く
+        run: python3 tools/strip_banned_hues.py work/v2 work/v3
+
+      - name: 結果を検査する
+        run: |
+          python3 - <<'PY'
+          import glob, sys
+          import numpy as np
+          from PIL import Image
+
+          def hls(a):
+              r, g, b = a[..., 0], a[..., 1], a[..., 2]
+              mx, mn = a.max(-1), a.min(-1)
+              l = (mx + mn) / 2
+              span = mx - mn
+              with np.errstate(divide="ignore", invalid="ignore"):
+                  s = np.where(span == 0, 0, np.where(l < 0.5, span / (mx + mn), span / (2 - mx - mn)))
+                  rc, gc, bc = (mx - r) / span, (mx - g) / span, (mx - b) / span
+                  h = np.where(mx == r, bc - gc, np.where(mx == g, 2 + rc - bc, 4 + gc - rc))
+              return np.nan_to_num((h / 6) % 1) * 360, l, np.nan_to_num(s)
+
+          bad = []
+          for p in sorted(glob.glob("work/v3/*.png")):
+              arr = np.asarray(Image.open(p).convert("RGB"), dtype=np.float32) / 255
+              h, l, s = hls(arr)
+              amber = ((s >= 0.20) & (l >= 0.10) & (h >= 15) & (h <= 55)).sum()
+              navy = ((s >= 0.30) & (l >= 0.10) & (h >= 200) & (h <= 250) & (l < 0.35)).sum()
+              if amber > 500 or navy > 500:
+                  bad.append((p, int(amber), int(navy)))
+
+          if bad:
+              for p, a, n in bad:
+                  print(f"✗ {p} 橙{a}px ネイビー{n}px")
+              sys.exit("禁止色が残っています。置き直しを中止します。")
+          print(f"✓ {len(glob.glob('work/v3/*.png'))} 枚、禁止色はありません")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recolored
+          path: work/v3
+          retention-days: 7
+
+      - name: R2 に置く
+        if: ${{ inputs.upload == 'yes' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python3 tools/upload_r2.py work/v3 --prefix sns
+
+      - name: 配信されるか確かめる
+        if: ${{ inputs.upload == 'yes' }}
+        run: |
+          for n in hpv3_01 hpv3_04 meov3_01 igv3_story; do
+            CODE=$(curl -sS -o /dev/null -w '%{http_code}' "https://media.camomile.co.jp/sns/$n.png")
+            echo "  $n.png → HTTP $CODE"
+            [ "$CODE" = "200" ] || exit 1
+          done
