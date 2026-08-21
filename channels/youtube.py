@@ -30,7 +30,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import load_item, post_form  # noqa: E402
+from _common import load_item, post_form, reel_caption  # noqa: E402
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos"
@@ -63,7 +63,7 @@ def link_with_utm(day: str) -> str:
 
 
 def title_and_description(day: str, item: dict) -> tuple[str, str, list[str]]:
-    caption = item.get("caption") or ""
+    caption = reel_caption(day, item)
     blocks = [b.strip() for b in caption.split("\n\n") if b.strip()]
     headline = blocks[0].split("\n")[0] if blocks else item.get("genre", "")
     headline = headline.replace("<", "＜").replace(">", "＞")

@@ -151,6 +151,37 @@ def narration_for(day: str) -> list[str]:
     ]
 
 
+def caption(day: str) -> str:
+    """ショート用の本文。
+
+    カルーセルのキャプションは5つのコツを列挙するので、
+    1つに絞った動画に付けると中身と食い違う。動画で言っていることだけを書く。
+    ハッシュタグは content.json のものをそのまま使う（選定済みのため）。
+    """
+    cfg, sh, tip = _cfg(day)
+    tags = ""
+    try:
+        content = json.loads((ROOT / "content.json").read_text(encoding="utf-8"))
+        for line in reversed((content.get(day, {}).get("caption") or "").splitlines()):
+            if line.strip().startswith("#"):
+                tags = line.strip()
+                break
+    except Exception:
+        pass
+
+    blocks = [
+        "".join(sh["hook"]),
+        f'やりがちなのは、{tip["ng"]}。',
+        "▼こうする\n" + tip["t"] + "\n" + "\n".join(f"・{c}" for c in tip["checks"]),
+        f'{tip["data"]}。',
+        "無料のMEO診断はプロフィールのリンクから。\n"
+        "店舗の集客・経営のヒントは @locoreach_ai から毎日発信中！",
+    ]
+    if tags:
+        blocks.append(tags)
+    return "\n\n".join(blocks)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--day", required=True)

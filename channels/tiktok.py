@@ -31,7 +31,7 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import load_item, post_form, post_json, reachable  # noqa: E402
+from _common import load_item, post_form, post_json, reachable, reel_caption  # noqa: E402
 
 API = "https://open.tiktokapis.com/v2"
 TITLE_LIMIT = 2200
@@ -63,7 +63,7 @@ def link_with_utm(day: str) -> str:
 
 def title_for(day: str, item: dict) -> str:
     """TikTok の本文。リンクはタップできないので短く1行だけ添える。"""
-    blocks = [b.strip() for b in (item.get("caption") or "").split("\n\n") if b.strip()]
+    blocks = [b.strip() for b in reel_caption(day, item).split("\n\n") if b.strip()]
     tags = [t for t in (blocks[-1].split() if blocks and blocks[-1].startswith("#") else []) if t.startswith("#")]
     body = []
     for b in blocks:

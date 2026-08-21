@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+import os
+
 import datetime
 import json
 import urllib.error
@@ -65,3 +67,23 @@ def reachable(url: str, timeout: int = 60) -> tuple[int, str]:
             return int(res.headers.get("content-length") or 0), res.headers.get("content-type", "")
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"URL に到達できません（HTTP {e.code}）: {url}") from None
+
+
+def reel_caption(day: str, item: dict) -> str:
+    """縦動画に付ける本文を返す。
+
+    REEL_FORMAT=short のときは、動画で扱っている**1つのコツ**だけを書く。
+    カルーセルのキャプションは5つを列挙するので、そのまま付けると
+    動画の中身と食い違う。
+    """
+    if os.environ.get("REEL_FORMAT", "").strip() != "short":
+        return item.get("caption") or ""
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    vd = str(_Path(__file__).resolve().parent.parent / "video")
+    if vd not in _sys.path:
+        _sys.path.insert(0, vd)
+    import short as _short
+
+    return _short.caption(day)

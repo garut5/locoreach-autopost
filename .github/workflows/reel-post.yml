@@ -15,6 +15,11 @@ on:
         type: choice
         options: [voicevox, none]
         default: voicevox
+      format:
+        description: "short=1コツ・約25秒（推奨） / full=カルーセル10枚・約70秒"
+        type: choice
+        options: [short, full]
+        default: short
       publish:
         description: "実際に投稿する（no なら内容の確認だけ）"
         type: choice
@@ -48,7 +53,7 @@ jobs:
       - name: 依存パッケージ
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          sudo apt-get install -y -qq ffmpeg fonts-noto-cjk
           pip install --quiet numpy Pillow
 
       - name: 曜日とファイル名を決める
@@ -83,26 +88,39 @@ jobs:
           done
           echo "VOICEVOX が起動しませんでした"; exit 1
 
+      - name: ショート用のカードを描く
+        if: ${{ inputs.format == 'short' }}
+        run: |
+          python3 video/short.py --day "${{ steps.name.outputs.day }}"
+          python3 video/cards.py --day "${{ steps.name.outputs.day }}" --outdir out/cards
+
       - name: ナレーション音声を合成
         if: ${{ inputs.narration == 'voicevox' }}
         env:
           VOICEVOX_URL: http://127.0.0.1:50021
           VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
+          IN_FORMAT: ${{ inputs.format }}
         run: |
           mkdir -p out
-          python3 video/narrate.py --day "${{ steps.name.outputs.day }}" --outdir out/voice
+          python3 video/narrate.py --day "${{ steps.name.outputs.day }}" --outdir out/voice --format "${IN_FORMAT:-short}"
 
       - name: 動画を作る
         id: build
+        env:
+          IN_FORMAT: ${{ inputs.format }}
         run: |
           mkdir -p out
+          ARGS=(--day "${{ steps.name.outputs.day }}" --out out/reel.mp4)
+          if [ "${IN_FORMAT:-short}" = "short" ]; then
+            ARGS+=(--slides-dir out/cards)
+          fi
           if [ -f out/voice/manifest.json ]; then
-            python3 video/build.py --day "${{ steps.name.outputs.day }}" --out out/reel.mp4 --narration-dir out/voice
+            ARGS+=(--narration-dir out/voice)
             echo "narration_used=1" >> "$GITHUB_OUTPUT"
           else
-            python3 video/build.py --day "${{ steps.name.outputs.day }}" --out out/reel.mp4
-            echo "narration_used=0" >> "$GITHUB_OUTPUT"
+            echo "narration_used=" >> "$GITHUB_OUTPUT"
           fi
+          python3 video/build.py "${ARGS[@]}"
 
       - name: 生成物を確認
         run: |
@@ -143,6 +161,7 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
+          REEL_FORMAT: ${{ inputs.format }}
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           if [ "${{ inputs.publish }}" = "yes" ]; then
@@ -159,6 +178,7 @@ jobs:
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           YT_PRIVACY: ${{ vars.YT_PRIVACY || 'public' }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
+          REEL_FORMAT: ${{ inputs.format }}
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
@@ -174,6 +194,7 @@ jobs:
           TIKTOK_MODE: ${{ vars.TIKTOK_MODE || 'inbox' }}
           TIKTOK_PRIVACY: ${{ vars.TIKTOK_PRIVACY }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
+          REEL_FORMAT: ${{ inputs.format }}
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
@@ -186,6 +207,7 @@ jobs:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
+          REEL_FORMAT: ${{ inputs.format }}
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"

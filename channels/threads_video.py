@@ -29,7 +29,7 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import ROOT, load_item, post_form, reachable, request  # noqa: E402
+from _common import ROOT, load_item, post_form, reachable, reel_caption, request  # noqa: E402
 
 API = "https://graph.threads.net/v1.0"
 LIMIT = 500
@@ -37,7 +37,7 @@ LIMIT = 500
 
 def text_for(day: str, item: dict, narration_used: bool) -> str:
     """フィードと同じ本文を使い、500字に収める。"""
-    blocks = [b.strip() for b in (item.get("caption") or "").split("\n\n") if b.strip()]
+    blocks = [b.strip() for b in reel_caption(day, item).split("\n\n") if b.strip()]
     tags = [t for t in (blocks[-1].split() if blocks and blocks[-1].startswith("#") else [])
             if t.startswith("#")]
     body = [b for b in blocks if not b.startswith("#")]
