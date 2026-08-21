@@ -48,6 +48,11 @@ jobs:
           python3 - <<'PY'
           import json, os, pathlib, urllib.request
 
+          # 既定の User-Agent（Python-urllib）は Cloudflare に 403 で弾かれる
+          OPENER = urllib.request.build_opener()
+          OPENER.addheaders = [("User-Agent", "locoreach-autopost/1.0")]
+          urllib.request.install_opener(OPENER)
+
           frm, to = os.environ["FROM_TAG"], os.environ["TO_TAG"]
           content = json.loads(pathlib.Path("content.json").read_text(encoding="utf-8"))
           urls = []
@@ -64,7 +69,11 @@ jobs:
                   continue
               seen.add(name)
               urllib.request.urlretrieve(src, f"work/src/{name}")
-          print(f"{len(seen)} 枚を {frm} から取得しました")
+
+          got = len(list(pathlib.Path("work/src").iterdir()))
+          print(f"{got} 枚を {frm} から取得しました")
+          # 1枚でも欠けたまま進むと、その曜日だけ古い画像が残る
+          assert got == len(seen), f"取得できたのは {got} 枚で、必要な {len(seen)} 枚に足りません"
           PY
 
       - name: 禁止色を抜く
