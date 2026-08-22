@@ -96,7 +96,12 @@ def youtube() -> None:
     body = get(f"{api}/channels?{q}")
     items = body.get("items") or []
     if not items:
-        print(f"  チャンネルを取得できません: {body.get('error', '0件')}\n")
+        err = str(body.get("error", ""))
+        if "insufficient" in err or "PERMISSION_DENIED" in err:
+            print("  youtube.upload のスコープでは一覧を読めません（投稿専用のため）。")
+            print("  どのチャンネルに上がるかは、投稿時の応答で確かめます。\n")
+        else:
+            print(f"  チャンネルを取得できません: {err[:200] or '0件'}\n")
         return
     ch = items[0]
     print(f"  チャンネル: {ch['snippet']['title']}  ({ch['id']})")

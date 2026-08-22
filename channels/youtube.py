@@ -171,6 +171,13 @@ def main() -> int:
     location = start_session(token, meta, size)
     r = upload(location, path, token)
     vid = r.get("id")
+    # どのチャンネルに上がったかを必ず出す。ブランドアカウントは本人アカウントと
+    # 別物で、OAuth の承認時に選び違えると黙って別のチャンネルへ上がる。
+    # youtube.upload のスコープでは channels.list を呼べないので、
+    # 投稿の応答に入っている値で確かめる。
+    sn = r.get("snippet") or {}
+    print(f"  チャンネル: {sn.get('channelTitle', '(不明)')}  ({sn.get('channelId', '?')})")
+    print(f"  公開設定: {(r.get('status') or {}).get('privacyStatus', '?')}")
     print(f"✓ YouTube へ投稿しました: https://www.youtube.com/shorts/{vid}")
     return 0
 

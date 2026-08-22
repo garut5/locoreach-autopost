@@ -25,6 +25,11 @@ on:
         type: choice
         options: ["no", "yes"]
         default: "no"
+      yt_privacy:
+        description: "YouTube の公開設定。初回は private で当たりを確かめる"
+        type: choice
+        options: ["", private, unlisted, public]
+        default: ""
       targets:
         description: "投稿先"
         type: choice
@@ -176,7 +181,7 @@ jobs:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
-          YT_PRIVACY: ${{ vars.YT_PRIVACY || 'public' }}
+          YT_PRIVACY: ${{ inputs.yt_privacy || vars.YT_PRIVACY || 'public' }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
           REEL_FORMAT: ${{ inputs.format }}
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
