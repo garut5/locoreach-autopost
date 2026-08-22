@@ -1,5 +1,11 @@
 name: daily-instagram-post
 
+# 20:00 JST。その日の記事からカルーセルを作って投稿する。
+#
+# content.json の7セットは固定で、毎週まったく同じ投稿が繰り返されていた。
+# 記事は毎朝1本ずつ増えるので、そこから作れば中身が毎日変わり、
+# しかも記事（＝診断フォームへの導線）へ送客できる。
+# 記事から作れなかった日は、従来の固定セットに落ちる（投稿を止めない）。
 on:
   schedule:
     - cron: '0 11 * * *'
@@ -9,18 +15,78 @@ on:
         description: '1=dry run (no post)'
         required: false
         default: '0'
+      source:
+        description: 'article=記事から作る / fixed=従来の固定セット'
+        type: choice
+        options: [article, fixed]
+        default: article
 
 jobs:
   post:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Post to Instagram
+          python-version: '3.12'
+
+      - name: 依存パッケージ
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          pip install --quiet Pillow
+
+      # 失敗しても投稿は止めない。作れなければ従来の固定セットで出す
+      - name: 記事から投稿一式を作る
+        id: make
+        if: ${{ inputs.source != 'fixed' }}
+        continue-on-error: true
+        run: |
+          python3 scripts/make_post.py --outdir out/post
+          echo "ready=1" >> "$GITHUB_OUTPUT"
+
+      - name: 画像を R2 へ置く
+        id: upload
+        if: ${{ steps.make.outputs.ready == '1' }}
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python3 tools/upload_r2.py out/post --prefix sns
+          echo "ready=1" >> "$GITHUB_OUTPUT"
+
+      # Instagram は image_url を自分で取りに来る。取れない URL を渡すと
+      # 途中まで進んでから失敗するので、投稿前にこちらで確かめる
+      - name: 画像が本当に返るか確かめる
+        id: check
+        if: ${{ steps.upload.outputs.ready == '1' }}
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, sys, urllib.request
+          d = json.load(open("out/post/post.json", encoding="utf-8"))
+          urls = d["image_urls"] + [d["story_url"]]
+          for u in urls:
+              req = urllib.request.Request(u, method="HEAD",
+                                           headers={"User-Agent": "locoreach-autopost/1.0"})
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  if r.status != 200:
+                      sys.exit(f"{u} が {r.status} を返しました")
+          print(f"✓ {len(urls)} 件すべて取得できました")
+          PY
+          echo "ready=1" >> "$GITHUB_OUTPUT"
+
+      - name: 投稿する
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
-        run: python post.py
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "${{ steps.check.outputs.ready }}" = "1" ]; then
+            export POST_ITEM=out/post/post.json
+          else
+            echo "記事から作れなかったので、従来の固定セットで投稿します"
+          fi
+          python3 post.py

@@ -113,7 +113,15 @@ def main():
     content = json.load(open(os.path.join(os.path.dirname(__file__), "content.json"), encoding="utf-8"))
     print(f"[{stamp}] 今日の曜日キー: {key}")
 
+    # 記事から作った投稿があればそれを使う（scripts/make_post.py の出力）。
+    # content.json は月〜日の7セット固定で、毎週同じ内容が繰り返されるため、
+    # ふだんはこちらを使い、作れなかった日だけ従来の固定セットに落ちる。
     item = content.get(key)
+    override = os.environ.get("POST_ITEM", "").strip()
+    if override and os.path.exists(override):
+        item = json.load(open(override, encoding="utf-8"))
+        print(f" → 記事から作った投稿を使います: {override}")
+
     if not item:
         print(f" → {key} のコンテンツは未設定。今日は投稿しません。")
         return

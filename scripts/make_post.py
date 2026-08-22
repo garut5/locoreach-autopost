@@ -6,9 +6,12 @@
     python3 scripts/make_post.py --slug xxxx --outdir out/post
 
 出るもの
-  slide_01.png … 1080x1350 のカルーセル（表紙＋見出し＋CTA）
-  story.png     … 1080x1920 のストーリーズ
-  post.json     … 画像の一覧とキャプション
+  <接頭辞>01.png … 1080x1350 のカルーセル（表紙＋見出し＋CTA）
+  <接頭辞>story.png … 1080x1920 のストーリーズ
+  post.json     … content.json の1日ぶんと同じ形。post.py に POST_ITEM で渡せる
+
+ファイル名に日付を入れるのは、R2 の配信が immutable キャッシュだから。
+同じ名前で上書きしても古い画像が返り続ける。
 
 ## なぜこれを作るのか
 content.json は月〜日の7セットが固定で、どこからも書き換えられていない。
@@ -39,6 +42,7 @@ CAROUSEL = (1080, 1350)
 STORY = (1080, 1920)
 MAX_POINTS = 6          # 表紙とCTAを足して最大8枚
 UTM = "utm_source=instagram&utm_medium=social&utm_campaign=media"
+CDN = "https://media.camomile.co.jp/sns"
 
 
 def first_sentence(text: str, limit: int = 60) -> str:
@@ -48,7 +52,7 @@ def first_sentence(text: str, limit: int = 60) -> str:
     return text[:limit]
 
 
-def build(a: dict, outdir: Path) -> dict:
+def build(a: dict, outdir: Path, prefix: str) -> dict:
     accent = a.get("accent") or cardkit.ACCENTS[0]
     chip = a.get("chip") or "店舗集客"
     points = a["sections"][:MAX_POINTS]
@@ -56,13 +60,13 @@ def build(a: dict, outdir: Path) -> dict:
         raise SystemExit("記事から見出しを取れませんでした。")
 
     outdir.mkdir(parents=True, exist_ok=True)
-    files: list[str] = []
+    names: list[str] = []
 
     def card(n: int, kicker: str, headline: list[str], body: list[str], head_size: int, corner: str = "") -> None:
-        p = outdir / f"slide_{n:02d}.png"
-        cardkit.render(p, kicker, headline, body, accent,
+        name = f"{prefix}{n:02d}.png"
+        cardkit.render(outdir / name, kicker, headline, body, accent,
                        size=CAROUSEL, head_size=head_size, corner=corner, safe=(0.13, 0.83))
-        files.append(str(p))
+        names.append(name)
 
     # 1 表紙。1枚目で「何の話か」と「何本あるか」を出す
     card(1, chip, wrap(a["title"], width=13, limit=5),
@@ -79,7 +83,8 @@ def build(a: dict, outdir: Path) -> dict:
          ["保存して", "あとで読む"],
          ["プロフィールのリンクから記事へ", "無料のMEO診断もそこから"], 78)
 
-    cardkit.render(outdir / "story.png", chip, wrap(a["title"], width=12, limit=4),
+    story = f"{prefix}story.png"
+    cardkit.render(outdir / story, chip, wrap(a["title"], width=12, limit=4),
                    ["詳しくはプロフィールのリンクから"], accent, size=STORY, head_size=80)
 
     caption = "\n\n".join([
@@ -91,14 +96,16 @@ def build(a: dict, outdir: Path) -> dict:
         f"店舗の集客・経営のヒントは @locoreach_ai から毎日発信中！",
     ])
 
+    # content.json の1日ぶんと同じ形にしておく。post.py がそのまま食える
     meta = {
+        "genre": f'記事連動：{chip}',
+        "image_urls": [f"{CDN}/{n}" for n in names],
+        "story_url": f"{CDN}/{story}",
+        "caption": caption,
         "title": a["title"],
         "url": f'{a["link"]}?{UTM}',
         "accent": accent,
-        "chip": chip,
-        "slides": files,
-        "story": str(outdir / "story.png"),
-        "caption": caption,
+        "slug": a["slug"],
     }
     (outdir / "post.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -109,13 +116,22 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--slug", default="")
     ap.add_argument("--outdir", required=True)
+    ap.add_argument("--name-prefix", dest="prefix", default="",
+                    help="ファイル名の接頭辞。既定は a<YYYYMMDD>-")
     args = ap.parse_args()
 
+    prefix = args.prefix
+    if not prefix:
+        import datetime
+
+        jst = datetime.timezone(datetime.timedelta(hours=9))
+        prefix = "a" + datetime.datetime.now(jst).strftime("%Y%m%d") + "-"
+
     a = article.load(args.slug)
-    meta = build(a, Path(args.outdir))
+    meta = build(a, Path(args.outdir), prefix)
     print(f"{meta['title']}")
     print(f"{meta['url']}")
-    print(f"アクセント {meta['accent']} / カルーセル {len(meta['slides'])}枚 + ストーリーズ1枚\n")
+    print(f"アクセント {meta['accent']} / カルーセル {len(meta['image_urls'])}枚 + ストーリーズ1枚\n")
     print("─" * 52)
     print(meta["caption"])
     print("─" * 52)
