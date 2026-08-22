@@ -1,0 +1,72 @@
+name: 記事からSNS投稿を作る（検証用・投稿しない）
+
+# content.json の7セットは固定で、毎週まったく同じ投稿が繰り返される。
+# 記事は毎朝1本ずつ増えているので、そこから作れば中身が毎日変わり、
+# しかも記事（＝診断フォームへの導線）に送客できる。
+#
+# ここでは作って確認用URLを出すだけ。投稿処理は呼ばない。
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "記事のスラッグ。空なら最新の記事"
+        required: false
+        default: ""
+      upload:
+        description: "確認用に R2 へ置く"
+        type: choice
+        options: ["yes", "no"]
+        default: "yes"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 依存パッケージ
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          pip install --quiet Pillow
+
+      - name: 記事から作る
+        env:
+          IN_SLUG: ${{ inputs.slug }}
+        run: python3 scripts/make_post.py --slug "$IN_SLUG" --outdir out/post
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: article-post
+          path: out/post/
+          retention-days: 7
+
+      # /sns/ は1階層しか返さないので、キーは平らな名前にする。
+      # キャッシュが immutable なので実行ごとに別名にする。
+      - name: 確認用に置く
+        if: ${{ inputs.upload == 'yes' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          mkdir -p out/up
+          for f in out/post/*.png; do
+            cp "$f" "out/up/ap${GITHUB_RUN_NUMBER}-$(basename "$f")"
+          done
+          python3 tools/upload_r2.py out/up --prefix sns
+          {
+            echo "## 確認用"
+            echo ""
+            for f in out/up/*.png; do
+              echo "- https://media.camomile.co.jp/sns/$(basename "$f")"
+            done
+            echo ""
+            echo '### キャプション'
+            echo '```'
+            python3 -c "import json;print(json.load(open('out/post/post.json',encoding='utf-8'))['caption'])"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

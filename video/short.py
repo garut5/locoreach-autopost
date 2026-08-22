@@ -56,11 +56,22 @@ def wrap(text: str, width: int = 12, limit: int = 3) -> list[str]:
     if n == 1:
         return [text]
 
+    # 句点があるならまずそこで切る。「Googleビジネスプロ／フィールの…」のような
+    # 割れ方は、文の途中で折ろうとするから起きる
+    if "。" in text[:-1]:
+        head, _, tail = text.partition("。")
+        head += "。"
+        room = limit - max(1, -(-len(head) // width))
+        if room >= 1:
+            return wrap(head, width, limit - room) + wrap(tail, width, room)
+
     lines, start = [], 0
     for i in range(n - 1):
         ideal = start + round((len(text) - start) / (n - i))
+        # 探す幅は広めに取る。狭いと「Googleビジネスプロ／フィール」のように
+        # 語の切れ目が窓の外に落ちて、悪い位置で折るしかなくなる
         cut = max(
-            (j for j in range(max(start + 1, ideal - 3), min(len(text), ideal + 4))),
+            (j for j in range(max(start + 1, ideal - 5), min(len(text), ideal + 6))),
             key=lambda j: (_break_score(text, j), -abs(j - ideal)),
             default=ideal,
         )
