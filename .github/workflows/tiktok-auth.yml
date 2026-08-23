@@ -1,0 +1,51 @@
+name: TikTok の認可（トークンを取る）
+
+# TikTok には OAuth Playground にあたるものが無いので、ここで代替する。
+#   1. mode=url    … 認可URLを出す。人がブラウザで開いて許可する
+#   2. mode=exchange … 戻ってきた認可コードを渡すと、
+#                      リフレッシュトークンに交換して Secrets に書き戻す
+#
+# シークレットもリフレッシュトークンも、画面にもログにも出さない。
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "url=認可URLを出す / exchange=認可コードを交換する"
+        type: choice
+        options: [url, exchange]
+        default: url
+      code:
+        description: "mode=exchange のときだけ。コールバック画面に出た認可コード"
+        required: false
+        default: ""
+
+jobs:
+  auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 実行
+        env:
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          IN_MODE: ${{ inputs.mode }}
+          IN_CODE: ${{ inputs.code }}
+        run: |
+          if [ "$IN_MODE" = "url" ]; then
+            python3 scripts/tiktok_auth.py url | tee out.txt
+            {
+              echo '### 認可URL'
+              echo ''
+              echo '```'
+              cat out.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            python3 scripts/tiktok_auth.py exchange --code "$IN_CODE"
+          fi
