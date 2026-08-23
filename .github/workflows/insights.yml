@@ -44,3 +44,15 @@ jobs:
           git -c user.name="locoreach-bot" -c user.email="info@camomile.co.jp" \
               commit -q -m "chore: Instagram の反応を集計した"
           git push origin HEAD:${GITHUB_REF_NAME}
+
+      # 定期実行は誰も見ていない時間に走る。落ちたことに気づけないと、
+      # 記事だけ出て SNS が止まった状態が何日も続く。
+      # NOTIFY_WEBHOOK 未設定なら何もしない（終了コード0）。
+      - name: 失敗を Google Chat へ知らせる
+        if: failure()
+        env:
+          NOTIFY_WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+          WF_NAME: ${{ github.workflow }}
+          WF_REPO: ${{ github.repository }}
+          WF_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 scripts/notify.py
