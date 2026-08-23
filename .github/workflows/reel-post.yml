@@ -149,9 +149,29 @@ jobs:
           VOICEVOX_URL: http://127.0.0.1:50021
           VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
           IN_FORMAT: ${{ steps.cfg.outputs.format }}
+          IN_SOURCE: ${{ steps.cfg.outputs.source }}
         run: |
           mkdir -p out
-          python3 video/narrate.py --day "${{ steps.name.outputs.day }}" --outdir out/voice --format "${IN_FORMAT:-short}"
+          SRC="${IN_SOURCE:-article}"
+          # full はカルーセル（content.json の固定画像）から作るので、音声も固定側。
+          # 記事から喋らせると、ここでも絵と声が食い違う。
+          [ "${IN_FORMAT:-short}" = "short" ] || SRC=fixed
+          # narrate.py の --source 既定は fixed。渡し忘れると、画面は記事・
+          # 音声は曜日固定の7本になり、絵と声が食い違ったまま毎週繰り返す。
+          # スラッグはカードが書き出した post.json から取る。記事を取り直すと
+          # その間に新しい記事が出て、絵と声が別の記事になりうる。
+          ARGS=(--day "${{ steps.name.outputs.day }}" --outdir out/voice
+                --format "${IN_FORMAT:-short}" --source "$SRC")
+          if [ "$SRC" = "article" ] && [ -f out/cards/post.json ]; then
+            SLUG=$(python3 -c "import json;print(json.load(open('out/cards/post.json'))['slug'])")
+            # bash -e で走るので && でつながない。スラッグが空のとき
+            # 直前の判定が偽になり、ステップごと落ちる
+            if [ -n "$SLUG" ]; then
+              ARGS+=(--slug "$SLUG")
+              echo "ナレーションも記事から: $SLUG"
+            fi
+          fi
+          python3 video/narrate.py "${ARGS[@]}"
 
       - name: 動画を作る
         id: build
