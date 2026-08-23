@@ -14,8 +14,13 @@ on:
         type: choice
         options: [voicevox, none]
         default: voicevox
+      source:
+        description: "article=その日の記事から作る（毎日ちがう） / fixed=曜日固定の7本"
+        type: choice
+        options: [article, fixed]
+        default: article
       format:
-        description: "short=1コツ・約25秒（推奨） / full=カルーセル10枚・約70秒"
+        description: "short=5枚・約25秒（推奨） / full=カルーセル10枚・約70秒"
         type: choice
         options: [short, full]
         default: short
@@ -68,10 +73,12 @@ jobs:
         if: ${{ inputs.format == 'short' }}
         env:
           IN_DAY: ${{ inputs.day }}
+          IN_SOURCE: ${{ inputs.source }}
         run: |
           DAY="${IN_DAY:-$(TZ=Asia/Tokyo date +%a | tr 'A-Z' 'a-z')}"
-          python3 video/short.py --day "$DAY"
-          python3 video/cards.py --day "$DAY" --outdir out/cards
+          SRC="${IN_SOURCE:-article}"
+          python3 video/short.py --source "$SRC" --day "$DAY"
+          python3 video/cards.py --source "$SRC" --day "$DAY" --outdir out/cards
 
       - name: ナレーション音声を合成
         if: ${{ inputs.narration == 'voicevox' }}
@@ -80,7 +87,10 @@ jobs:
           VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
           IN_DAY: ${{ inputs.day }}
           IN_FORMAT: ${{ inputs.format }}
-        run: python3 video/narrate.py --day "$IN_DAY" --outdir out/voice --format "${IN_FORMAT:-short}"
+          IN_SOURCE: ${{ inputs.source }}
+        run: |
+          python3 video/narrate.py --day "$IN_DAY" --outdir out/voice \
+            --format "${IN_FORMAT:-short}" --source "${IN_SOURCE:-article}"
 
       - name: 動画を作る
         env:

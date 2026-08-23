@@ -193,13 +193,107 @@ def caption(day: str) -> str:
     return "\n\n".join(blocks)
 
 
+# ── 記事から作る ────────────────────────────────────────────
+# slide_copy.json は7ジャンル固定なので、毎週同じ7本になる。
+# 記事は毎朝1本ずつ増えるので、そこから作れば動画も毎日変わる。
+
+ARTICLE_STEPS = ["まず", "つぎに", "そして"]
+
+
+def _hook(a: dict) -> str:
+    """冒頭の1文。ここで見るかどうかが決まるので、短く言い切れるものを選ぶ。"""
+    return (_sentence(a.get("description", ""), 34)
+            or _sentence(a.get("title", ""), 34)
+            or (a.get("title", "") or "")[:34])
+
+
+def _sentence(text: str, limit: int = 46) -> str:
+    """最初の1文。長すぎるときは**空を返す**。
+
+    途中で切ると「…投稿画面まで」のように文が途切れたまま読み上げてしまう。
+    入らないなら見出しだけにしたほうが、聞いても読んでも成立する。
+    """
+    text = (text or "").strip()
+    for sep in ("。", "！", "？"):
+        head = text.split(sep)[0]
+        if head != text and len(head) <= limit:
+            return head
+    return text if len(text) <= limit else ""
+
+
+def plan_for_article(a: dict) -> list[dict]:
+    """記事1本から、ショート5枚ぶんのカードを組み立てる。"""
+    secs = (a.get("sections") or [])[:3]
+    if not secs:
+        raise SystemExit("記事から見出しを取れませんでした。")
+    chip = a.get("chip") or "店舗集客"
+    hook = _hook(a)
+
+    cards = [{"kicker": chip, "headline": wrap(hook, width=12, limit=3), "big": True}]
+    for i, sec in enumerate(secs):
+        lead = _sentence(sec.get("lead", ""), 46)
+        body = wrap(lead, width=20, limit=2) if lead else []
+        cards.append({"kicker": ARTICLE_STEPS[i], "headline": wrap(sec["title"], width=12, limit=3),
+                      "body": body})
+    cards.append({"kicker": "続きは記事で",
+                  "headline": ["保存して", "あとで読む"],
+                  "body": ["プロフィールのリンクから記事へ", "無料のMEO診断もそこから"]})
+    return cards
+
+
+def narration_for_article(a: dict) -> list[str]:
+    """カードに書いてある文字と同じ素材から読み上げを作る。"""
+    secs = (a.get("sections") or [])[:3]
+    hook = _hook(a)
+
+    def clean(t: str) -> str:
+        t = _DROP.sub("", t).replace("＋", "と").replace("／", "、")
+        t = t.replace("Q&A", "キューアンドエー").replace("HP", "ホームページ")
+        return re.sub(r"\s+", " ", t).strip()
+
+    lines = [clean(hook + "。")]
+    for i, sec in enumerate(secs):
+        lead = _sentence(sec.get("lead", ""), 46)
+        lines.append(clean(f'{ARTICLE_STEPS[i]}、{sec["title"]}。{lead}。' if lead
+                           else f'{ARTICLE_STEPS[i]}、{sec["title"]}。'))
+    lines.append(clean("続きは記事にまとめています。プロフィールのリンクからどうぞ。"))
+    return lines
+
+
+def caption_for_article(a: dict) -> str:
+    """ショートに付ける本文。動画で触れた見出しだけを書く。"""
+    secs = (a.get("sections") or [])[:3]
+    blocks = [
+        a["title"],
+        _sentence(a.get("description") or "", 60) + "。",
+        "▼この動画でわかること\n" + "\n".join(f"{i:02d} {s['title']}" for i, s in enumerate(secs, 1)),
+        "続きは記事にまとめています。プロフィールのリンクからどうぞ。\n"
+        "無料のMEO診断もそこから受け取れます。",
+        "店舗の集客・経営のヒントは @locoreach_ai から毎日発信中！",
+    ]
+    return "\n\n".join(blocks)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--day", required=True)
+    ap.add_argument("--day")
+    ap.add_argument("--source", choices=["fixed", "article"], default="fixed")
+    ap.add_argument("--slug", default="")
     args = ap.parse_args()
 
-    plan = plan_for(args.day)
-    lines = narration_for(args.day)
+    if args.source == "article":
+        import sys as _sys
+
+        _sys.path.insert(0, str(ROOT / "scripts"))
+        import article as _article
+
+        a = _article.load(args.slug)
+        plan, lines = plan_for_article(a), narration_for_article(a)
+        print(f"{a['title']}\n{a['link']}\n")
+    else:
+        if not args.day:
+            raise SystemExit("--day が要ります（--source fixed のとき）")
+        plan, lines = plan_for(args.day), narration_for(args.day)
     total = 0.0
     for i, (card, line) in enumerate(zip(plan, lines), 1):
         sec = len(line) / 6.5      # VOICEVOX speedScale 1.15 での実測に近い値

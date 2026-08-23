@@ -76,6 +76,13 @@ def reel_caption(day: str, item: dict) -> str:
     カルーセルのキャプションは5つを列挙するので、そのまま付けると
     動画の中身と食い違う。
     """
+    # 記事から作った回は、カード生成のときに書き出した本文をそのまま使う。
+    # 各チャンネルが記事を取り直すと、その間に記事が入れ替わりうる
+    src = os.environ.get("REEL_ITEM", "").strip()
+    if src and os.path.exists(src):
+        import json as _json
+
+        return _json.load(open(src, encoding="utf-8")).get("caption") or ""
     if os.environ.get("REEL_FORMAT", "").strip() != "short":
         return item.get("caption") or ""
     import sys as _sys

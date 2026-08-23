@@ -15,8 +15,13 @@ on:
         type: choice
         options: [voicevox, none]
         default: voicevox
+      source:
+        description: "article=その日の記事から作る（毎日ちがう） / fixed=曜日固定の7本"
+        type: choice
+        options: [article, fixed]
+        default: article
       format:
-        description: "short=1コツ・約25秒（推奨） / full=カルーセル10枚・約70秒"
+        description: "short=5枚・約25秒（推奨） / full=カルーセル10枚・約70秒"
         type: choice
         options: [short, full]
         default: short
@@ -95,9 +100,12 @@ jobs:
 
       - name: ショート用のカードを描く
         if: ${{ inputs.format == 'short' }}
+        env:
+          IN_SOURCE: ${{ inputs.source }}
         run: |
-          python3 video/short.py --day "${{ steps.name.outputs.day }}"
-          python3 video/cards.py --day "${{ steps.name.outputs.day }}" --outdir out/cards
+          SRC="${IN_SOURCE:-article}"
+          python3 video/short.py --source "$SRC" --day "${{ steps.name.outputs.day }}"
+          python3 video/cards.py --source "$SRC" --day "${{ steps.name.outputs.day }}" --outdir out/cards
 
       - name: ナレーション音声を合成
         if: ${{ inputs.narration == 'voicevox' }}
@@ -167,6 +175,7 @@ jobs:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
           REEL_FORMAT: ${{ inputs.format }}
+          REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           if [ "${{ inputs.publish }}" = "yes" ]; then
@@ -184,6 +193,7 @@ jobs:
           YT_PRIVACY: ${{ inputs.yt_privacy || vars.YT_PRIVACY || 'public' }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
           REEL_FORMAT: ${{ inputs.format }}
+          REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
@@ -200,6 +210,7 @@ jobs:
           TIKTOK_PRIVACY: ${{ vars.TIKTOK_PRIVACY }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
           REEL_FORMAT: ${{ inputs.format }}
+          REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
@@ -213,6 +224,7 @@ jobs:
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
           REEL_FORMAT: ${{ inputs.format }}
+          REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"

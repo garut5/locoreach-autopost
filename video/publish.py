@@ -47,7 +47,10 @@ def _req(url: str, data: dict | None = None, method: str = "GET") -> dict:
 
 def caption_for(day: str, narration_used: bool) -> str:
     """フィードと同じ本文を使い、必要ならクレジットを足す。"""
-    if os.environ.get("REEL_FORMAT", "").strip() == "short":
+    src = os.environ.get("REEL_ITEM", "").strip()
+    if src and os.path.exists(src):
+        text = json.loads(Path(src).read_text(encoding="utf-8")).get("caption", "")
+    elif os.environ.get("REEL_FORMAT", "").strip() == "short":
         import sys as _sys
 
         _sys.path.insert(0, str(ROOT / "video"))

@@ -210,7 +210,10 @@ def main() -> int:
     ap.add_argument("--outdir", required=True, help="スライドごとの音声を書き出す先")
     ap.add_argument("--print-only", action="store_true", help="原稿だけ出して合成しない")
     ap.add_argument("--format", dest="fmt", choices=["full", "short"], default="full",
-                    help="full=カルーセル10枚ぶん / short=1コツに絞った5枚ぶん")
+                    help="full=カルーセル10枚ぶん / short=5枚ぶん")
+    ap.add_argument("--source", choices=["fixed", "article"], default="fixed",
+                    help="article=その日の記事から原稿を作る")
+    ap.add_argument("--slug", default="")
     args = ap.parse_args()
 
     if args.day:
@@ -221,8 +224,16 @@ def main() -> int:
         jst = datetime.timezone(datetime.timedelta(hours=9))
         key = WEEKDAYS[datetime.datetime.now(jst).weekday()]
 
-    lines = short.narration_for(key) if args.fmt == "short" else script.lines_for(key)
-    print(f"[{key}] {args.fmt} / スライド {len(lines)} 枚ぶんの原稿")
+    if args.source == "article":
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import article as _article
+
+        lines = short.narration_for_article(_article.load(args.slug))
+    elif args.fmt == "short":
+        lines = short.narration_for(key)
+    else:
+        lines = script.lines_for(key)
+    print(f"[{key}] {args.source}/{args.fmt} / {len(lines)} 枚ぶんの原稿")
     for i, line in enumerate(lines, 1):
         print(f"  {i:2}枚目 {line}")
     if args.print_only:
