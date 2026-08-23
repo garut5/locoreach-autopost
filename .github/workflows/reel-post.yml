@@ -1,9 +1,14 @@
 name: 縦動画を作って投稿する（Reels / ショート / TikTok / Threads）
 
-# 当面は手動実行のみ。publish の既定は no（作るだけ・投稿しない）。
-# 中身を Artifacts で確認してから publish=yes に切り替える運用。
-# 既存の post.yml（20:00 JST・フィード／ストーリーズ／Threads）には一切関与しない。
+# 毎日18:00 JST。その日の記事から縦動画を作って各媒体へ出す。
+# カルーセルは20:00（post.yml）なので、2時間ずらして重ならないようにしている。
+#
+# 定期実行では inputs が空になる。空のまま条件式に使うとどの投稿先にも
+# 当たらず、黙って何もせず終わる。既定は「設定を決める」ステップで埋める。
 on:
+  schedule:
+    # 09:00 UTC = 18:00 JST
+    - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
       day:
@@ -86,8 +91,39 @@ jobs:
           echo "file=$STAMP-$DAY.mp4" >> "$GITHUB_OUTPUT"
           echo "曜日=$DAY / ファイル名=$STAMP-$DAY.mp4"
 
+      # 定期実行では inputs が空。ここで既定に寄せて、以降はこの出力だけを見る
+      - name: 設定を決める
+        id: cfg
+        env:
+          IN_PUBLISH: ${{ inputs.publish }}
+          IN_TARGETS: ${{ inputs.targets }}
+          IN_FORMAT: ${{ inputs.format }}
+          IN_SOURCE: ${{ inputs.source }}
+          IN_YT: ${{ inputs.yt_privacy }}
+          IN_NARRATION: ${{ inputs.narration }}
+          VAR_TARGETS: ${{ vars.REEL_TARGETS }}
+          VAR_YT: ${{ vars.YT_PRIVACY }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "schedule" ]; then
+            PUBLISH=yes
+            TARGETS="${VAR_TARGETS:-all}"
+          else
+            PUBLISH="${IN_PUBLISH:-no}"
+            TARGETS="${IN_TARGETS:-all}"
+          fi
+          {
+            echo "publish=$PUBLISH"
+            echo "targets=$TARGETS"
+            echo "format=${IN_FORMAT:-short}"
+            echo "source=${IN_SOURCE:-article}"
+            echo "yt_privacy=${IN_YT:-${VAR_YT:-public}}"
+            echo "narration=${IN_NARRATION:-voicevox}"
+          } >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH / targets=$TARGETS / format=${IN_FORMAT:-short} / source=${IN_SOURCE:-article}"
+
       - name: VOICEVOX の起動を待つ
-        if: ${{ inputs.narration == 'voicevox' }}
+        if: ${{ steps.cfg.outputs.narration == 'voicevox' }}
         run: |
           for i in $(seq 1 60); do
             if curl -sS --max-time 5 http://127.0.0.1:50021/version >/dev/null 2>&1; then
@@ -99,20 +135,20 @@ jobs:
           echo "VOICEVOX が起動しませんでした"; exit 1
 
       - name: ショート用のカードを描く
-        if: ${{ inputs.format == 'short' }}
+        if: ${{ steps.cfg.outputs.format == 'short' }}
         env:
-          IN_SOURCE: ${{ inputs.source }}
+          IN_SOURCE: ${{ steps.cfg.outputs.source }}
         run: |
           SRC="${IN_SOURCE:-article}"
           python3 video/short.py --source "$SRC" --day "${{ steps.name.outputs.day }}"
           python3 video/cards.py --source "$SRC" --day "${{ steps.name.outputs.day }}" --outdir out/cards
 
       - name: ナレーション音声を合成
-        if: ${{ inputs.narration == 'voicevox' }}
+        if: ${{ steps.cfg.outputs.narration == 'voicevox' }}
         env:
           VOICEVOX_URL: http://127.0.0.1:50021
           VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
-          IN_FORMAT: ${{ inputs.format }}
+          IN_FORMAT: ${{ steps.cfg.outputs.format }}
         run: |
           mkdir -p out
           python3 video/narrate.py --day "${{ steps.name.outputs.day }}" --outdir out/voice --format "${IN_FORMAT:-short}"
@@ -120,7 +156,7 @@ jobs:
       - name: 動画を作る
         id: build
         env:
-          IN_FORMAT: ${{ inputs.format }}
+          IN_FORMAT: ${{ steps.cfg.outputs.format }}
         run: |
           mkdir -p out
           ARGS=(--day "${{ steps.name.outputs.day }}" --out out/reel.mp4)
@@ -169,39 +205,39 @@ jobs:
           echo "配信URLが 200 を返しません: $URL"; exit 1
 
       - name: Instagram Reels へ投稿
-        if: ${{ (inputs.targets == 'all' || inputs.targets == 'instagram') && steps.upload.outputs.video_url != '' }}
+        if: ${{ (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'instagram') && steps.upload.outputs.video_url != '' }}
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
-          REEL_FORMAT: ${{ inputs.format }}
+          REEL_FORMAT: ${{ steps.cfg.outputs.format }}
           REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
-          if [ "${{ inputs.publish }}" = "yes" ]; then
+          if [ "${{ steps.cfg.outputs.publish }}" = "yes" ]; then
             python3 video/publish.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}"
           else
             python3 video/publish.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" --dry-run
           fi
 
       - name: YouTube ショートへ投稿
-        if: ${{ inputs.targets == 'all' || inputs.targets == 'youtube' }}
+        if: ${{ steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'youtube' }}
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
-          YT_PRIVACY: ${{ inputs.yt_privacy || vars.YT_PRIVACY || 'public' }}
+          YT_PRIVACY: ${{ steps.cfg.outputs.yt_privacy }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
-          REEL_FORMAT: ${{ inputs.format }}
+          REEL_FORMAT: ${{ steps.cfg.outputs.format }}
           REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
-          if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
+          if [ "${{ steps.cfg.outputs.publish }}" = "yes" ]; then FLAG=""; fi
           python3 channels/youtube.py --day "${{ steps.name.outputs.day }}" --file out/reel.mp4 $FLAG
 
       - name: TikTok へ投稿
-        if: ${{ (inputs.targets == 'all' || inputs.targets == 'tiktok') && steps.upload.outputs.video_url != '' }}
+        if: ${{ (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'tiktok') && steps.upload.outputs.video_url != '' }}
         env:
           TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
@@ -209,26 +245,26 @@ jobs:
           TIKTOK_MODE: ${{ vars.TIKTOK_MODE || 'inbox' }}
           TIKTOK_PRIVACY: ${{ vars.TIKTOK_PRIVACY }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
-          REEL_FORMAT: ${{ inputs.format }}
+          REEL_FORMAT: ${{ steps.cfg.outputs.format }}
           REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
-          if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
+          if [ "${{ steps.cfg.outputs.publish }}" = "yes" ]; then FLAG=""; fi
           python3 channels/tiktok.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
 
       - name: Threads へ動画を投稿
-        if: ${{ (inputs.targets == 'all' || inputs.targets == 'threads') && steps.upload.outputs.video_url != '' }}
+        if: ${{ (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'threads') && steps.upload.outputs.video_url != '' }}
         env:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           NARRATION_USED: ${{ steps.build.outputs.narration_used }}
-          REEL_FORMAT: ${{ inputs.format }}
+          REEL_FORMAT: ${{ steps.cfg.outputs.format }}
           REEL_ITEM: out/cards/post.json
           TTS_CREDIT: VOICEVOX:${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
         run: |
           FLAG="--dry-run"
-          if [ "${{ inputs.publish }}" = "yes" ]; then FLAG=""; fi
+          if [ "${{ steps.cfg.outputs.publish }}" = "yes" ]; then FLAG=""; fi
           python3 channels/threads_video.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
 
       - name: R2 が未設定のとき
