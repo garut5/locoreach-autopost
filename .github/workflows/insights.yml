@@ -1,0 +1,46 @@
+name: 反応を集計する（Instagram）
+
+# 毎月1日 09:00 JST。どの軸が伸びているかを集計して insights.json に残す。
+# public リポジトリなので、記事生成側（private）から raw で読める。
+#
+# 「バズる題材」を先読みすることは誰にもできない。できるのは
+# 反応が出た方向に寄せ続けることだけで、そのための材料を作る。
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  insights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 集計する
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+        run: |
+          python3 scripts/insights.py --write | tee out.txt
+          {
+            echo '```'
+            cat out.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 記録する
+        run: |
+          git add insights.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "変化がありません"
+            exit 0
+          fi
+          git -c user.name="locoreach-bot" -c user.email="info@camomile.co.jp" \
+              commit -q -m "chore: Instagram の反応を集計した"
+          git push origin HEAD:${GITHUB_REF_NAME}
