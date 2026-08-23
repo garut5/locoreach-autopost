@@ -1,0 +1,21 @@
+{
+  "generated_from": "instagram",
+  "posts_analyzed": 6,
+  "by_category": [
+    {
+      "category": "その他",
+      "posts": 5,
+      "reach": 2.6,
+      "saved": 0,
+      "save_rate": 0.0
+    },
+    {
+      "category": "MEO・Googleビジネスプロフィール",
+      "posts": 1,
+      "reach": 0,
+      "saved": 0,
+      "save_rate": 0.0
+    }
+  ],
+  "note": "save_rate の高い軸を、次のキーワード選定で優先する"
+}
