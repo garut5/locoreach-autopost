@@ -1,0 +1,29 @@
+name: 通知が届くか確かめる
+
+# 失敗通知は「届かなくても成功」で終わる。通知の失敗で本体の失敗を
+# 塗り替えないための設計だが、そのぶん経路が生きているか分からない。
+# ここは --strict で走るので、届かなければステップが赤くなる。
+# 実行結果を見るだけで判定でき、ログ本文を読む必要がない。
+#
+# 定期実行はしない。確かめたいときに手で叩く。
+on:
+  workflow_dispatch:
+
+jobs:
+  notify-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: テストのメッセージを送る
+        env:
+          NOTIFY_WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+          WF_NAME: ${{ github.workflow }}
+          WF_REPO: ${{ github.repository }}
+          WF_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 scripts/notify.py --strict --test
