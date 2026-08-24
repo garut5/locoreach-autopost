@@ -1,0 +1,84 @@
+name: 会社サイトのブログを更新する（camomile.co.jp）
+
+# 毎日11:00 JST。その日の記事の入口を会社サイトに載せる。
+#
+# これまで会社サイトは「毎週月曜に人が承認して1週間分を予約投稿」する
+# 運用だった。承認する人がいない週は、日曜で在庫が尽きて止まる。
+# 実際 2026-08-23 で止まった。ここは人の手が要らない形にする。
+#
+# 資格情報が無いときは何もせず正常終了する。Secret を入れる前でも壊れない。
+on:
+  schedule:
+    # 02:00 UTC = 11:00 JST。記事の公開（07:03 JST）より十分あと。
+    # GitHub の定期実行は実測で20〜80分ほど遅れて起動する
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "出す内容だけ見る（投稿しない）"
+        type: choice
+        options: ["yes", "no"]
+        default: "yes"
+      status:
+        description: "publish=公開 / draft=下書きに入れて目視する"
+        type: choice
+        options: [publish, draft]
+        default: draft
+      slug:
+        description: "media 側のスラッグ。空なら最新の記事"
+        required: false
+        default: ""
+
+jobs:
+  corporate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 定期実行では inputs が空になる。空のまま使うと dry-run 扱いになり、
+      # 「成功したのに投稿されない」状態が続く
+      - name: 設定を決める
+        id: cfg
+        env:
+          IN_DRY: ${{ inputs.dry_run }}
+          IN_STATUS: ${{ inputs.status }}
+          IN_SLUG: ${{ inputs.slug }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "schedule" ]; then
+            DRY=no
+            STATUS=publish
+          else
+            DRY="${IN_DRY:-yes}"
+            STATUS="${IN_STATUS:-draft}"
+          fi
+          { echo "dry=$DRY"; echo "status=$STATUS"; echo "slug=${IN_SLUG}"; } >> "$GITHUB_OUTPUT"
+          echo "dry_run=$DRY / status=$STATUS / slug=${IN_SLUG:-（最新）}"
+
+      - name: 会社サイトへ投稿する
+        env:
+          WP_BASE_URL: https://camomile.co.jp
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          DRY: ${{ steps.cfg.outputs.dry }}
+          STATUS: ${{ steps.cfg.outputs.status }}
+          SLUG: ${{ steps.cfg.outputs.slug }}
+        run: |
+          ARGS=(--status "$STATUS")
+          if [ -n "$SLUG" ]; then ARGS+=(--slug "$SLUG"); fi
+          if [ "$DRY" = "yes" ]; then ARGS+=(--dry-run); fi
+          python3 scripts/corporate_post.py "${ARGS[@]}"
+
+      - name: 失敗を Google Chat へ知らせる
+        if: failure()
+        env:
+          NOTIFY_WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+          WF_NAME: ${{ github.workflow }}
+          WF_REPO: ${{ github.repository }}
+          WF_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 scripts/notify.py
