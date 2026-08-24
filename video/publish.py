@@ -30,13 +30,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 IG_BASE = "https://graph.instagram.com/v21.0"
+# Cloudflare は User-Agent の無いリクエストを 403 で弾く。
+# 既定のままだと Python-urllib/3.x で出てしまうので、必ず名乗る。
+UA = "locoreach-reels/1.0"
 CAPTION_LIMIT = 2200
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
 def _req(url: str, data: dict | None = None, method: str = "GET") -> dict:
     body = urllib.parse.urlencode(data).encode() if data else None
-    req = urllib.request.Request(url, data=body, method=method, headers={"User-Agent": "locoreach-reels/1.0"})
+    req = urllib.request.Request(url, data=body, method=method, headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=90) as res:
             return json.loads(res.read().decode())
@@ -106,6 +109,27 @@ def wait_ready(container: str, token: str, timeout_sec: int = 600) -> None:
     raise RuntimeError(f"{timeout_sec}秒経っても取り込みが完了しませんでした（最後の状態: {last}）")
 
 
+def reachable(url: str) -> tuple[int, str]:
+    """投稿前に、動画が本当に取得できるかこちらから確かめる。
+
+    HEAD を弾く配信元があるので、断られたら1バイトだけ GET して確かめる。
+    ここで止めておかないと、Instagram 側が取りに行って失敗し、
+    原因の分からないエラーだけが返ってくる。
+    """
+    try:
+        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=60) as res:
+            return int(res.headers.get("content-length") or 0), res.headers.get("content-type", "")
+    except urllib.error.HTTPError:
+        req = urllib.request.Request(
+            url, method="GET", headers={"User-Agent": UA, "Range": "bytes=0-0"}
+        )
+        with urllib.request.urlopen(req, timeout=60) as res:
+            rng = res.headers.get("content-range", "")
+            total = int(rng.rsplit("/", 1)[-1]) if "/" in rng else 0
+            return total, res.headers.get("content-type", "")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--video-url", required=True)
@@ -143,11 +167,11 @@ def main() -> int:
 
     # 動画が本当に取得できるか、投稿前にこちらから確認する
     try:
-        head = urllib.request.Request(args.video_url, method="HEAD")
-        with urllib.request.urlopen(head, timeout=60) as res:
-            size = int(res.headers.get("content-length") or 0)
-            ctype = res.headers.get("content-type", "")
-        print(f"  動画の到達確認: {size/1024/1024:.1f}MB / {ctype}")
+        size, ctype = reachable(args.video_url)
+        if size:
+            print(f"  動画の到達確認: {size/1024/1024:.1f}MB / {ctype}")
+        else:
+            print(f"  動画の到達確認: {ctype}")
     except Exception as e:
         sys.exit(f"動画URLに到達できません。投稿を中止します: {e}")
 

@@ -5,6 +5,10 @@ name: 縦動画を作って投稿する（Reels / ショート / TikTok / Thread
 #
 # 定期実行では inputs が空になる。空のまま条件式に使うとどの投稿先にも
 # 当たらず、黙って何もせず終わる。既定は「設定を決める」ステップで埋める。
+#
+# 投稿ステップの if に !cancelled() を入れているのは、既定の success() だと
+# 1媒体でも落ちた時点で残りが skip されるため。8/24 の初回はこれで
+# Instagram の失敗に YouTube・TikTok・Threads が巻き込まれた。
 on:
   schedule:
     # 09:00 UTC = 18:00 JST
@@ -225,7 +229,7 @@ jobs:
           echo "配信URLが 200 を返しません: $URL"; exit 1
 
       - name: Instagram Reels へ投稿
-        if: ${{ (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'instagram') && steps.upload.outputs.video_url != '' }}
+        if: ${{ !cancelled() && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'instagram') && steps.upload.outputs.video_url != '' }}
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -241,7 +245,7 @@ jobs:
           fi
 
       - name: YouTube ショートへ投稿
-        if: ${{ steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'youtube' }}
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'youtube') }}
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -257,7 +261,7 @@ jobs:
           python3 channels/youtube.py --day "${{ steps.name.outputs.day }}" --file out/reel.mp4 $FLAG
 
       - name: TikTok へ投稿
-        if: ${{ (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'tiktok') && steps.upload.outputs.video_url != '' }}
+        if: ${{ !cancelled() && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'tiktok') && steps.upload.outputs.video_url != '' }}
         env:
           TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
@@ -274,7 +278,7 @@ jobs:
           python3 channels/tiktok.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
 
       - name: Threads へ動画を投稿
-        if: ${{ (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'threads') && steps.upload.outputs.video_url != '' }}
+        if: ${{ !cancelled() && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'threads') && steps.upload.outputs.video_url != '' }}
         env:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
