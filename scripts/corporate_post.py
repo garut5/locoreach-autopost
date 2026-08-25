@@ -102,8 +102,15 @@ def main() -> int:
         print(f"⚠ {e} のため投稿をスキップします")
         return 0
 
-    who = wp.whoami()
-    print(f"  接続確認: {who.get('name')}（ID {who.get('id')}）")
+    # 接続確認は「できたら嬉しい」程度のもの。ここで止めない。
+    # Wordfence の「REST API によるユーザー名の発見を防ぐ」が有効だと
+    # /wp/v2/users/* が塞がれることがある。投稿そのものは別の経路なので、
+    # 確認が取れないことを理由に投稿を諦めるのは筋が悪い。
+    try:
+        who = wp.whoami()
+        print(f"  接続確認: {who.get('name')}（ID {who.get('id')}）")
+    except WordPressError as e:
+        print(f"  接続確認はできませんでした（投稿は続行します）: {str(e)[:80]}")
 
     if wp.find_by_slug(post["slug"]):
         print(f"✓ すでに投稿済みのため何もしません: {post['slug']}")
