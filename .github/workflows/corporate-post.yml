@@ -1,43 +1,35 @@
-name: 会社サイトのブログを更新する（camomile.co.jp）
+name: 会社サイトの自動投稿を起こす（camomile.co.jp）
 
-# 毎日11:00 JST。その日の記事の入口を会社サイトに載せる。
+# 会社サイトへの投稿は、サイトの中の mu-plugin
+# （wp-content/mu-plugins/camomilemediabridge.php）が行う。
+# ここはそれを「起こす」だけ。
 #
-# これまで会社サイトは「毎週月曜に人が承認して1週間分を予約投稿」する
-# 運用だった。承認する人がいない週は、日曜で在庫が尽きて止まる。
-# 実際 2026-08-23 で止まった。ここは人の手が要らない形にする。
+# ■ なぜ外から投稿しないのか
 #
-# 資格情報が無いときは何もせず正常終了する。Secret を入れる前でも壊れない。
+# 当初は REST API で押し込む作りにしたが、Xserver が Authorization
+# ヘッダを PHP に渡す前に落とすため、認証が成立しなかった。
+# .htaccess の SetEnvIf / RewriteRule、PHP_AUTH_USER へ展開する
+# mu-plugin のいずれでも届かず、2026-08-26 に断念した。
+# scripts/wp.py と scripts/corporate_post.py はその名残で、
+# 資格情報が無いので実行しても何もしない。
+#
+# ■ なぜ起こす必要があるのか
+#
+# WP-Cron は「誰かがサイトを訪れたとき」に動く。会社サイトは
+# 訪問が多くないので、訪問任せだと投稿が何時間も遅れうる。
+# ここから毎日叩いて、確実に1日1回動かす。
+#
+# 認証情報は使わない。公開URLを叩くだけ。
 on:
   schedule:
-    # 02:00 UTC = 11:00 JST。記事の公開（07:03 JST）より十分あと。
-    # GitHub の定期実行は実測で20〜80分ほど遅れて起動する
+    # 02:00 UTC = 11:00 JST。記事の公開（07:03 JST）より十分あと
     - cron: "0 2 * * *"
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: "出す内容だけ見る（投稿しない）"
-        type: choice
-        options: ["yes", "no"]
-        default: "yes"
-      status:
-        description: "publish=公開 / draft=下書きに入れて目視する"
-        type: choice
-        options: [publish, draft]
-        default: draft
-      slug:
-        description: "media 側のスラッグ。空なら最新の記事"
-        required: false
-        default: ""
-      check_only:
-        description: "資格情報だけ確かめる（記事は作らない）"
-        type: choice
-        options: ["no", "yes"]
-        default: "no"
 
 jobs:
-  corporate:
+  wake:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -45,46 +37,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      # 定期実行では inputs が空になる。空のまま使うと dry-run 扱いになり、
-      # 「成功したのに投稿されない」状態が続く
-      - name: 設定を決める
-        id: cfg
-        env:
-          IN_DRY: ${{ inputs.dry_run }}
-          IN_STATUS: ${{ inputs.status }}
-          IN_SLUG: ${{ inputs.slug }}
-          IN_CHECK: ${{ inputs.check_only }}
-          EVENT: ${{ github.event_name }}
+      - name: WP-Cron を起こす
         run: |
-          if [ "$EVENT" = "schedule" ]; then
-            DRY=no
-            STATUS=publish
-          else
-            DRY="${IN_DRY:-yes}"
-            STATUS="${IN_STATUS:-draft}"
-          fi
-          { echo "dry=$DRY"; echo "status=$STATUS"; echo "slug=${IN_SLUG}"
-            echo "check=${IN_CHECK:-no}"; } >> "$GITHUB_OUTPUT"
-          echo "dry_run=$DRY / status=$STATUS / slug=${IN_SLUG:-（最新）}"
+          URL="https://camomile.co.jp/wp-cron.php?doing_wp_cron=$(date +%s)"
+          for i in 1 2 3; do
+            CODE=$(curl -sS --max-time 60 -o /dev/null -w "%{http_code}" \
+                   -A "locoreach-autopost/1.0" "$URL" || echo 000)
+            echo "  試行 $i: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "wp-cron.php が 200 を返しませんでした"; exit 1
 
-      - name: 会社サイトへ投稿する
-        env:
-          WP_BASE_URL: https://camomile.co.jp
-          WP_USER: ${{ secrets.WP_USER }}
-          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
-          DRY: ${{ steps.cfg.outputs.dry }}
-          STATUS: ${{ steps.cfg.outputs.status }}
-          SLUG: ${{ steps.cfg.outputs.slug }}
-          CHECK: ${{ steps.cfg.outputs.check }}
-        run: |
-          if [ "$CHECK" = "yes" ]; then
-            python3 scripts/corporate_post.py --check
-            exit 0
-          fi
-          ARGS=(--status "$STATUS")
-          if [ -n "$SLUG" ]; then ARGS+=(--slug "$SLUG"); fi
-          if [ "$DRY" = "yes" ]; then ARGS+=(--dry-run); fi
-          python3 scripts/corporate_post.py "${ARGS[@]}"
+      - name: 会社サイトに今日の記事が載ったか確かめる
+        run: python3 scripts/corporate_check.py
 
       - name: 失敗を Google Chat へ知らせる
         if: failure()
