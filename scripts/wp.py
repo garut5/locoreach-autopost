@@ -78,6 +78,17 @@ class WordPress:
         """資格情報が通るかの確認。投稿はしない。"""
         return self._call("/wp/v2/users/me")
 
+    def can_edit(self) -> int:
+        """投稿を作らずに、資格情報と権限だけを確かめる。
+
+        context=edit は edit_posts 権限がないと 401/403 になる。
+        つまり「読めた」ことが「書ける」ことの証明になる。
+        whoami() と違って /wp/v2/users を使わないので、
+        Wordfence のユーザー名秘匿が有効でも通る。
+        """
+        r = self._call("/wp/v2/posts", params={"context": "edit", "per_page": 1})
+        return len(r)
+
     def find_by_slug(self, slug: str) -> list[dict]:
         """同じスラッグの投稿を探す。二重投稿を防ぐため。
 

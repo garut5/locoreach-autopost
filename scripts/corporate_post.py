@@ -79,7 +79,15 @@ def main() -> int:
     ap.add_argument("--slug", default="", help="media 側のスラッグ。既定は最新")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--status", default="publish", choices=["publish", "draft"])
+    ap.add_argument("--check", action="store_true",
+                    help="資格情報と権限だけ確かめる。記事は作らない")
     args = ap.parse_args()
+
+    if args.check:
+        wp = WordPress()
+        n = wp.can_edit()
+        print(f"✓ 資格情報は有効です（編集権限あり／既存投稿 {n} 件を読めました）")
+        return 0
 
     a = _article.load(args.slug)
     post = build(a)

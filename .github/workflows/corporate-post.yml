@@ -28,6 +28,11 @@ on:
         description: "media 側のスラッグ。空なら最新の記事"
         required: false
         default: ""
+      check_only:
+        description: "資格情報だけ確かめる（記事は作らない）"
+        type: choice
+        options: ["no", "yes"]
+        default: "no"
 
 jobs:
   corporate:
@@ -48,6 +53,7 @@ jobs:
           IN_DRY: ${{ inputs.dry_run }}
           IN_STATUS: ${{ inputs.status }}
           IN_SLUG: ${{ inputs.slug }}
+          IN_CHECK: ${{ inputs.check_only }}
           EVENT: ${{ github.event_name }}
         run: |
           if [ "$EVENT" = "schedule" ]; then
@@ -57,7 +63,8 @@ jobs:
             DRY="${IN_DRY:-yes}"
             STATUS="${IN_STATUS:-draft}"
           fi
-          { echo "dry=$DRY"; echo "status=$STATUS"; echo "slug=${IN_SLUG}"; } >> "$GITHUB_OUTPUT"
+          { echo "dry=$DRY"; echo "status=$STATUS"; echo "slug=${IN_SLUG}"
+            echo "check=${IN_CHECK:-no}"; } >> "$GITHUB_OUTPUT"
           echo "dry_run=$DRY / status=$STATUS / slug=${IN_SLUG:-（最新）}"
 
       - name: 会社サイトへ投稿する
@@ -68,7 +75,12 @@ jobs:
           DRY: ${{ steps.cfg.outputs.dry }}
           STATUS: ${{ steps.cfg.outputs.status }}
           SLUG: ${{ steps.cfg.outputs.slug }}
+          CHECK: ${{ steps.cfg.outputs.check }}
         run: |
+          if [ "$CHECK" = "yes" ]; then
+            python3 scripts/corporate_post.py --check
+            exit 0
+          fi
           ARGS=(--status "$STATUS")
           if [ -n "$SLUG" ]; then ARGS+=(--slug "$SLUG"); fi
           if [ "$DRY" = "yes" ]; then ARGS+=(--dry-run); fi
