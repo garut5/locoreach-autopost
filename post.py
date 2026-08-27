@@ -9,7 +9,7 @@ locoreach_ai 毎日自動投稿（GitHub Actions 用）
 - 該当曜日のコンテンツが無ければ何もしない（月・火など未設定日はスキップ）
 - DRY_RUN=1 のときは投稿せず内容だけ表示（テスト用）
 """
-import os, sys, json, time, datetime, urllib.request, urllib.parse
+import os, sys, json, time, datetime, urllib.error, urllib.request, urllib.parse
 
 IG_VERSION = "v21.0"
 IG_BASE = f"https://graph.instagram.com/{IG_VERSION}"
@@ -28,18 +28,50 @@ def jst_today_key():
     return WEEKDAY_KEY[now.weekday()], now.strftime("%Y-%m-%d %H:%M JST")
 
 
+def _detail(e):
+    """API が返した理由を取り出す。
+
+    urllib の HTTPError をそのまま表示すると
+    「HTTP Error 400: Bad Request」としか出ず、何が悪いのか分からない。
+    Meta の API は本文に error.message で理由を書いてくるので、そちらを読む。
+    アクセストークンは本文に含まれないが、念のため長さを切る。
+    """
+    try:
+        body = e.read().decode("utf-8", "replace")
+    except Exception:
+        return str(e)
+    try:
+        err = json.loads(body).get("error", {})
+        msg = err.get("error_user_msg") or err.get("message") or ""
+        code = err.get("code")
+        sub = err.get("error_subcode")
+        parts = [p for p in (f"code={code}" if code else "",
+                             f"subcode={sub}" if sub else "", msg) if p]
+        if parts:
+            return f"HTTP {e.code}: " + " / ".join(parts)
+    except Exception:
+        pass
+    return f"HTTP {e.code}: {body[:300]}"
+
+
 def _get(base, path, params):
     url = f"{base}/{path}?{urllib.parse.urlencode(params)}"
-    with urllib.request.urlopen(url) as r:
-        return json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(url) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(_detail(e)) from None
 
 
 def _post(base, path, params):
     req = urllib.request.Request(
         f"{base}/{path}", data=urllib.parse.urlencode(params).encode(), method="POST"
     )
-    with urllib.request.urlopen(req) as r:
-        return json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(_detail(e)) from None
 
 
 def threads_text(caption, limit=490):
