@@ -16,11 +16,21 @@ on:
         description: "特定の記事だけ投稿する場合はスラッグ"
         required: false
         default: ""
+      # 既定を "no"（＝投稿する）にしてある。
+      #
+      # 定期実行では inputs が空になるので IN_DRY_RUN も空になり、投稿する。
+      # 一方 workflow_dispatch では GitHub がここの既定値を埋めるため、
+      # 既定が "yes" だと「手で投げ直したのに黙って dry-run で終わる」。
+      # 2026-08-28、定期実行が発火しなかった日に投げ直してこれを踏み、
+      # 実行結果は緑なのに Threads へ1件も出ていなかった。
+      #
+      # 投稿済みの記事は posted.json で弾かれる（dry-run 判定より前）ので、
+      # 既定を "no" にしても二重投稿にはならない。
       dry_run:
         description: "内容の確認だけして投稿しない"
         type: choice
         options: ["no", "yes"]
-        default: "yes"
+        default: "no"
 
 permissions:
   contents: write

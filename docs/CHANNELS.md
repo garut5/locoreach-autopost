@@ -19,14 +19,45 @@ Secrets を入れた翌日から、そのチャネルだけが動き出す。
 
 | チャネル | ワークフロー | 起動 | 素材 |
 |---|---|---|---|
-| Instagram リール | `reel-post.yml` | 手動（既定は投稿しない） | 縦動画 |
+| Instagram リール | `reel-post.yml` | 毎日18:00 | 縦動画 |
 | YouTube ショート | `reel-post.yml` | 同上 | 縦動画 |
 | TikTok | `reel-post.yml` | 同上 | 縦動画 |
 | Threads（動画） | `reel-post.yml` | 同上 | 縦動画 |
 | X | `x-post.yml` | 毎日20:00（空振り中） | 画像4枚 |
 
-`reel-post.yml` は `publish=no` が既定。まず Artifacts で中身を確認し、
-問題なければ `publish=yes` で実行する。慣れたら cron を足す。
+X だけは投稿していない。`vars.X_ENABLED` が未設定のあいだ、定期実行は
+必ず `--dry-run` になる。X は従量課金（PPU）なので、Secrets を入れた
+翌日から気づかないうちに課金が始まる事故を防ぐための止め弁。
+出し始めるときは Variables に `X_ENABLED=1` を入れる。
+なお X の素材は曜日固定の7セットで、その日の記事とは連動していない。
+
+## 止まった日に手で出し直す
+
+GitHub の cron は遅れる。実測で +20〜80分、2026-08-27 は丸一日
+1本も発火せず、翌日の早朝に前日ぶんが流れた。気づいた時点で
+手で投げ直すことになるが、**定期実行と手動実行では既定値が違う**。
+
+workflow_dispatch では GitHub が inputs の既定値を埋める。定期実行では
+inputs は空。この差を忘れると、実行結果は緑なのに何も出ていない。
+
+出し直すときは、既定に任せず必ず明示する。
+
+| ワークフロー | 指定する入力 | 何も指定しないと |
+|---|---|---|
+| `post.yml` | （不要） | そのまま投稿する |
+| `corporate-post.yml` | （入力なし） | そのまま起こす |
+| `media-promote.yml` | `dry_run=no` | 投稿する（2026-08-28 に既定を変更） |
+| `reel-post.yml` | `publish=yes` | **投稿しない**（動画を作って終わる） |
+| `x-post.yml` | `dry_run=no` | **投稿しない** |
+
+`reel-post.yml` と `x-post.yml` の既定が「投稿しない」なのは意図的。
+前者は4媒体へ動画を出すので中身を Artifacts で確かめてから、
+後者は課金が発生するため。既定は変えず、投げ直すときに明示する。
+
+出したあとは実行結果の緑ではなく、ログの中身で確かめる。
+`media-promote.yml` なら `✓ Threads へ投稿しました`、
+`post.yml` なら `=== 投稿結果 ===` の行、
+そこに載っている記事のスラッグがその日のものかどうかを見る。
 
 ## Secrets（リポジトリの Settings → Secrets and variables → Actions）
 
