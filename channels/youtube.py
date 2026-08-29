@@ -30,7 +30,8 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import load_item, post_form, reel_caption  # noqa: E402
+from _common import (load_item, post_form, reel_caption, reel_target,
+                     strip_lines, PROFILE_LINE)  # noqa: E402
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos"
@@ -52,11 +53,11 @@ def access_token() -> str:
 
 
 def link_with_utm(day: str) -> str:
-    base = os.environ.get("YT_LINK", "https://media.camomile.co.jp/").strip()
+    base, slug = reel_target(os.environ.get("YT_LINK", "https://media.camomile.co.jp/").strip())
     parts = urllib.parse.urlsplit(base)
     query = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
     present = {k for k, _ in query}
-    for k, v in {**UTM, "utm_content": day}.items():
+    for k, v in {**UTM, "utm_content": slug or day}.items():
         if k not in present:
             query.append((k, v))
     return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
@@ -74,13 +75,8 @@ def title_and_description(day: str, item: dict) -> tuple[str, str, list[str]]:
 
     # YouTube はタイトル・概要欄に < > を置けない。Instagram のハンドルは
     # ここでは別人の @ 扱いになるので、その行ごと落とす。
-    body = []
-    for b in blocks:
-        if b.startswith("#"):
-            continue
-        kept = [ln for ln in b.split("\n") if "@locoreach_ai" not in ln]
-        if kept:
-            body.append("\n".join(kept))
+    body = strip_lines([b for b in blocks if not b.startswith("#")],
+                       ("@locoreach_ai", PROFILE_LINE))
     parts = ["\n\n".join(body), "", link_with_utm(day), "", "#Shorts " + " ".join(f"#{t}" for t in tags[:8])]
     if os.environ.get("NARRATION_USED", "").strip() == "1":
         credit = os.environ.get("TTS_CREDIT", "VOICEVOX:ずんだもん").strip()

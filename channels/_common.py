@@ -94,3 +94,35 @@ def reel_caption(day: str, item: dict) -> str:
     import short as _short
 
     return _short.caption(day)
+
+
+def reel_target(fallback: str) -> tuple[str, str]:
+    """縦動画の誘導先URLと、utm_content に入れる値を返す。
+
+    記事から作った回は、その記事へ送る。動画で話しているのがその記事なので、
+    サイトのトップに落とすと、見た人がもう一度探すことになる。
+    記事ではない回（曜日固定の7本）は fallback をそのまま使う。
+    """
+    src = os.environ.get("REEL_ITEM", "").strip()
+    if src and os.path.exists(src):
+        item = json.load(open(src, encoding="utf-8"))
+        url = (item.get("url") or "").strip()
+        if url:
+            return url, (item.get("slug") or "").strip()
+    return fallback, ""
+
+
+# Instagram 向けの一行。本文にURLを出せるチャネルでは、すぐ下にURLが並ぶので
+# 噛み合わない。そちらでは落とす。
+PROFILE_LINE = "プロフィールのリンクから受け取れます"
+
+
+def strip_lines(blocks: list[str], needles: tuple[str, ...]) -> list[str]:
+    """指定の語を含む行を落とす。全部落ちたブロックは捨てる。"""
+    out = []
+    for b in blocks:
+        kept = [ln for ln in b.split("\n") if not any(n in ln for n in needles)]
+        if any(ln.strip() for ln in kept):
+            out.append("\n".join(kept))
+    return out
+

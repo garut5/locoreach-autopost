@@ -29,10 +29,25 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import ROOT, load_item, post_form, reachable, reel_caption, request  # noqa: E402
+from _common import (ROOT, load_item, post_form, reachable, reel_caption, reel_target,
+                     request, strip_lines, PROFILE_LINE)  # noqa: E402
 
 API = "https://graph.threads.net/v1.0"
 LIMIT = 500
+UTM = {"utm_source": "threads", "utm_medium": "social", "utm_campaign": "sns"}
+
+
+def link_with_utm(day: str) -> str:
+    """記事へのリンク。Threads は本文中のURLを踏める。"""
+    base, slug = reel_target(
+        os.environ.get("THREADS_LINK", "https://media.camomile.co.jp/").strip())
+    parts = urllib.parse.urlsplit(base)
+    query = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+    present = {k for k, _ in query}
+    for k, v in {**UTM, "utm_content": slug or day}.items():
+        if k not in present:
+            query.append((k, v))
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
 
 
 def text_for(day: str, item: dict, narration_used: bool) -> str:
@@ -40,7 +55,7 @@ def text_for(day: str, item: dict, narration_used: bool) -> str:
     blocks = [b.strip() for b in reel_caption(day, item).split("\n\n") if b.strip()]
     tags = [t for t in (blocks[-1].split() if blocks and blocks[-1].startswith("#") else [])
             if t.startswith("#")]
-    body = [b for b in blocks if not b.startswith("#")]
+    body = strip_lines([b for b in blocks if not b.startswith("#")], (PROFILE_LINE,))
 
     credit = ""
     if narration_used:
@@ -48,7 +63,10 @@ def text_for(day: str, item: dict, narration_used: bool) -> str:
         if c:
             credit = f"\n\n音声: {c}"
 
-    tail = ("\n\n" + " ".join(tags[:5]) if tags else "") + credit
+    # リンクは tail に入れて先に予算を取る。本文と同じ扱いにすると、
+    # 500字に収める過程で最初に落ちるのがリンクになる
+    tail = ("\n\n▼続きはこちら\n" + link_with_utm(day)
+            + ("\n\n" + " ".join(tags[:5]) if tags else "") + credit)
     budget = LIMIT - len(tail)
 
     out: list[str] = []

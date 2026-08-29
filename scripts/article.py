@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import urllib.parse
 import urllib.request
 
 FEED = "https://media.camomile.co.jp/feed.xml"
@@ -57,6 +58,37 @@ def feed_items() -> list[dict]:
     return items
 
 
+# 出典ドメイン → 画面に出す名前。確信のあるものだけ書き、
+# 知らないドメインはホスト名をそのまま出す（間違った名前を付けるより正確）。
+SOURCE_NAMES = {
+    "support.google.com": "Google 公式ヘルプ",
+    "developers.google.com": "Google 公式ドキュメント",
+    "developers.openai.com": "OpenAI 公式ドキュメント",
+    "developers.cloudflare.com": "Cloudflare 公式ドキュメント",
+    "www.ppc.go.jp": "個人情報保護委員会",
+}
+
+
+def _sources(html: str) -> list[str]:
+    """「参照した一次情報」の出典名。重複を除いて出てきた順に返す。
+
+    動画の裏づけカードに使う。数字や体験談を作らずに済ませるための素材で、
+    ここが空なら裏づけカードは出さない（無い根拠を演出しない）。
+    """
+    i = html.find('class="sources"')
+    if i < 0:
+        return []
+    block = html[i:html.find("</section>", i)]
+    names, seen = [], set()
+    for m in re.finditer(r'href="(https?://[^"]+)"', block):
+        host = urllib.parse.urlsplit(m.group(1)).netloc
+        name = SOURCE_NAMES.get(host) or host.removeprefix("www.")
+        if name not in seen:
+            seen.add(name)
+            names.append(name)
+    return names
+
+
 def parse(url: str) -> dict:
     """記事ページから、SNS に必要なものを取り出す。
 
@@ -65,7 +97,7 @@ def parse(url: str) -> dict:
     ここから取れば二重管理にならず、ずれようがない。
     """
     html = get(url)
-    out = {"accent": "", "chip": "", "sections": []}
+    out = {"accent": "", "chip": "", "sections": [], "sources": []}
 
     m = re.search(r'<article class="post"[^>]*--accent:\s*(#[0-9A-Fa-f]{6})', html)
     if m:
@@ -75,6 +107,7 @@ def parse(url: str) -> dict:
         out["chip"] = strip_tags(m.group(1))
 
     out["sections"] = _sections(html)
+    out["sources"] = _sources(html)
     return out
 
 
@@ -125,7 +158,7 @@ def main() -> int:
     for i, s in enumerate(a["sections"], 1):
         print(f"  {i}. {s['title']}")
         print(f"     {s['lead'][:70]}")
-    print(f"\n見出し {len(a['sections'])} 本")
+    print(f"\n見出し {len(a['sections'])} 本 / 出典 {'・'.join(a['sources']) or 'なし'}")
     return 0
 
 

@@ -95,25 +95,33 @@ def _cls(ch: str) -> str:
     return "other"
 
 
+# 1字の助詞。語の切れ目を見分ける手がかりにする
+_PARTICLES = "はがをにでともへやのか"
+
+
 def _break_score(text: str, j: int) -> int:
-    """j の直前で改行してよさそうかを点数にする。
+    """j の直前で改行してよさそうかを点数にする（line1 = text[:j]）。
 
     「情／報」「取り／こぼし」のように語の途中で割れるのを避けたい。
     形態素解析を持ち込まずに済ませるため、文字種の変わり目を手がかりにする。
+
+    漢字→平仮名を「切ってよい位置」と数えていたが、これは
+    「店名｜が」（助詞の手前）と「知｜らない」（送り仮名の途中）を
+    区別できない。前者は助詞が行頭に来るので避けたく、後者は語の途中。
+    どちらも良くないので、この形は0にした。
     """
     a, b = _cls(text[j - 1]), _cls(text[j])
     if a == "punct":
         return 4
     if a == b:                       # 同種が続く＝語の途中の可能性が高い
         return -3
-    if a in ("kanji", "kata") and b == "hira":
-        return 2                     # 送り仮名・助詞の手前。切ってよい
     if a == "hira" and b in ("kanji", "kata"):
-        # 「打ち｜手」のように、送り仮名1字を挟んだ複合語の途中でもこの形になる。
-        # 直前が漢字なら語の途中とみなして下げる
+        if text[j - 1] in _PARTICLES:
+            return 4                 # 助詞で終わっている。確実に語の切れ目
+        # 「打ち｜手」のように、送り仮名1字を挟んだ複合語の途中でもこの形になる
         if j >= 2 and _cls(text[j - 2]) == "kanji":
             return 1
-        return 3                     # 次の語の頭。いちばん切りやすい
+        return 3                     # 次の語の頭
     return 0
 
 
@@ -196,8 +204,48 @@ def caption(day: str) -> str:
 # ── 記事から作る ────────────────────────────────────────────
 # slide_copy.json は7ジャンル固定なので、毎週同じ7本になる。
 # 記事は毎朝1本ずつ増えるので、そこから作れば動画も毎日変わる。
+#
+# ## 構成
+# 「まず／つぎに／そして」で見出しを3つ読むだけの作りだった。
+# 見出しが並ぶだけなので、途中で止められると何も残らない。
+#
+#   1 名指し ＋ 結論   誰に向けた話かを最初に言う
+#   2 予告            この動画でわかることを番号で見せる（離脱を止める）
+#   3 ①              見出し1
+#   4 ②              見出し2
+#   5 ③              見出し3
+#   6 裏づけ          記事が参照した一次情報の名前
+#   7 CTA             無料のMEO診断。行き先を明示する
+#
+# 6 の裏づけは、記事の「参照した一次情報」から作る。
+# 実績の数字や体験談は持っていないし、作ってもいけない。
+# 代わりに「どこを見て書いたか」を出す。出典が取れない記事では
+# このカードごと出さない（無い根拠を演出しない）。
 
-ARTICLE_STEPS = ["まず", "つぎに", "そして"]
+STEPS = ["①", "②", "③"]
+ORDINALS = ["1つめ", "2つめ", "3つめ"]
+
+# 記事URLのカテゴリ → 冒頭で名指しする相手。
+# 「誰に向けた話か」を最初に言うと、関係ない人は離れ、当事者は残る。
+AUDIENCE = {
+    "meo": "Googleビジネスプロフィールを使っている方へ",
+    "review": "口コミの対応に困っている方へ",
+    "website": "ホームページから集客したい方へ",
+    "aio": "AI検索での見え方が気になる方へ",
+    "ai-tool": "AIを店の仕事に使いたい方へ",
+    "subsidy": "補助金の活用を考えている方へ",
+    "keiei": "店の数字を見直したい方へ",
+}
+AUDIENCE_DEFAULT = "店舗を経営している方へ"
+
+CTA_HEAD = ["お店のプロフィール", "いま外から", "どう見えているか"]
+CTA_BODY = ["店名とGoogleビジネスプロフィールのURLだけ", "プロフィールのリンクから ↓"]
+CTA_READ = ("お店のプロフィールが今どう見えているかは、無料のMEO診断で確かめられます。"
+            "店名とURLだけで送れます。プロフィールのリンクからどうぞ。")
+
+
+def _audience(a: dict) -> str:
+    return AUDIENCE.get(a.get("section") or a.get("category", ""), AUDIENCE_DEFAULT)
 
 
 def _hook(a: dict) -> str:
@@ -221,55 +269,113 @@ def _sentence(text: str, limit: int = 46) -> str:
     return text if len(text) <= limit else ""
 
 
-def plan_for_article(a: dict) -> list[dict]:
-    """記事1本から、ショート5枚ぶんのカードを組み立てる。"""
+def _clip(text: str, limit: int) -> str:
+    text = _DROP.sub("", text or "").strip()
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _steps(a: dict) -> list[dict]:
     secs = (a.get("sections") or [])[:3]
     if not secs:
         raise SystemExit("記事から見出しを取れませんでした。")
-    chip = a.get("chip") or "店舗集客"
+    return secs
+
+
+def plan_for_article(a: dict) -> list[dict]:
+    """記事1本から、ショート用のカードを組み立てる。"""
+    secs = _steps(a)
     hook = _hook(a)
 
-    cards = [{"kicker": chip, "headline": wrap(hook, width=12, limit=3), "big": True}]
+    cards = [
+        {"kicker": _audience(a), "headline": wrap(hook, width=12, limit=3), "big": True},
+        {"kicker": "この動画でわかること",
+         "headline": wrap(a.get("title", ""), width=12, limit=3),
+         "body": [f"{STEPS[i]} {_clip(s['title'], 22)}" for i, s in enumerate(secs)]},
+    ]
     for i, sec in enumerate(secs):
         lead = _sentence(sec.get("lead", ""), 46)
-        body = wrap(lead, width=20, limit=2) if lead else []
-        cards.append({"kicker": ARTICLE_STEPS[i], "headline": wrap(sec["title"], width=12, limit=3),
-                      "body": body})
-    cards.append({"kicker": "続きは記事で",
-                  "headline": ["保存して", "あとで読む"],
-                  "body": ["プロフィールのリンクから記事へ", "無料のMEO診断もそこから"]})
+        cards.append({"kicker": STEPS[i],
+                      "headline": wrap(sec["title"], width=12, limit=3),
+                      "body": wrap(lead, width=20, limit=2) if lead else []})
+
+    # 出典が取れた記事だけ、裏づけのカードを足す
+    srcs = (a.get("sources") or [])[:3]
+    if srcs:
+        cards.append({"kicker": "この話の出どころ",
+                      "headline": ["公式の一次情報を", "もとにしています"],
+                      "body": [f"・{n}" for n in srcs]})
+
+    cards.append({"kicker": "無料", "headline": CTA_HEAD, "body": CTA_BODY})
     return cards
 
 
 def narration_for_article(a: dict) -> list[str]:
     """カードに書いてある文字と同じ素材から読み上げを作る。"""
-    secs = (a.get("sections") or [])[:3]
-    hook = _hook(a)
+    secs = _steps(a)
 
     def clean(t: str) -> str:
         t = _DROP.sub("", t).replace("＋", "と").replace("／", "、")
         t = t.replace("Q&A", "キューアンドエー").replace("HP", "ホームページ")
         return re.sub(r"\s+", " ", t).strip()
 
-    lines = [clean(hook + "。")]
+    lines = [
+        clean(f"{_audience(a)}。{_hook(a)}。"),
+        # 予告は短く。見出しはカードに出ているので、ここで読み上げると重複する
+        clean(f"この動画でわかることは{len(secs)}つです。"),
+    ]
     for i, sec in enumerate(secs):
         lead = _sentence(sec.get("lead", ""), 46)
-        lines.append(clean(f'{ARTICLE_STEPS[i]}、{sec["title"]}。{lead}。' if lead
-                           else f'{ARTICLE_STEPS[i]}、{sec["title"]}。'))
-    lines.append(clean("続きは記事にまとめています。プロフィールのリンクからどうぞ。"))
+        lines.append(clean(f'{ORDINALS[i]}。{sec["title"]}。{lead}。' if lead
+                           else f'{ORDINALS[i]}。{sec["title"]}。'))
+
+    srcs = (a.get("sources") or [])[:3]
+    if srcs:
+        # 出典が1つのときに「など」を付けると、他にもあるように聞こえる
+        where = f"{srcs[0]}など" if len(srcs) > 1 else srcs[0]
+        lines.append(clean(f"ここまでの内容は、{where}の記載をもとにしています。"))
+
+    lines.append(clean(CTA_READ))
     return lines
 
 
+# 記事のカテゴリ → ハッシュタグ。scripts/promote.py と同じ分類にそろえている
+TAGS = {
+    "meo": "#MEO #Googleビジネスプロフィール #店舗集客",
+    "review": "#口コミ #Google口コミ #店舗集客",
+    "website": "#ホームページ制作 #店舗集客 #Web集客",
+    "aio": "#AI検索 #AIO #店舗集客",
+    "ai-tool": "#店舗DX #AI活用 #個人店",
+    "subsidy": "#補助金 #IT導入補助金 #店舗経営",
+    "keiei": "#店舗経営 #集客 #個人店",
+}
+
+
 def caption_for_article(a: dict) -> str:
-    """ショートに付ける本文。動画で触れた見出しだけを書く。"""
-    secs = (a.get("sections") or [])[:3]
+    """ショートに付ける本文。動画で触れた見出しだけを書く。
+
+    記事URLはここに入れない。YouTube・TikTok・Threads は各チャネルが
+    自分の utm_source を付けて末尾に足すので、ここにも書くと同じURLが
+    2回並び、流入元も分けて数えられなくなる。
+    Instagram はリンクを踏めないので、プロフィール経由の案内だけを置く。
+
+    ハッシュタグは**最後のブロック**に置く。各チャネルがそこを見て
+    タグとして取り出し、本文とは別に組み直している。
+    """
+    secs = _steps(a)
     blocks = [
         a["title"],
         _sentence(a.get("description") or "", 60) + "。",
-        "▼この動画でわかること\n" + "\n".join(f"{i:02d} {s['title']}" for i, s in enumerate(secs, 1)),
-        "続きは記事にまとめています。プロフィールのリンクからどうぞ。\n"
-        "無料のMEO診断もそこから受け取れます。",
+        "▼この動画でわかること\n" + "\n".join(
+            f"{STEPS[i]} {s['title']}" for i, s in enumerate(secs)),
+    ]
+    if a.get("sources"):
+        blocks.append("出典：" + "・".join(a["sources"][:3]))
+    blocks += [
+        "お店のプロフィールが今どう見えているかは、無料のMEO診断で確かめられます。\n"
+        "店名とGoogleビジネスプロフィールのURLだけ。5分で送れます。\n"
+        "プロフィールのリンクから受け取れます。",
         "店舗の集客・経営のヒントは @locoreach_ai から毎日発信中！",
+        TAGS.get(a.get("section") or a.get("category", ""), "#店舗集客 #MEO"),
     ]
     return "\n\n".join(blocks)
 

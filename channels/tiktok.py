@@ -31,7 +31,8 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import load_item, post_form, post_json, reachable, reel_caption  # noqa: E402
+from _common import (load_item, post_form, post_json, reachable, reel_caption,
+                     reel_target, strip_lines, PROFILE_LINE)  # noqa: E402
 
 API = "https://open.tiktokapis.com/v2"
 TITLE_LIMIT = 2200
@@ -51,11 +52,11 @@ def access_token() -> str:
 
 
 def link_with_utm(day: str) -> str:
-    base = os.environ.get("TIKTOK_LINK", "https://media.camomile.co.jp/").strip()
+    base, slug = reel_target(os.environ.get("TIKTOK_LINK", "https://media.camomile.co.jp/").strip())
     parts = urllib.parse.urlsplit(base)
     query = urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
     present = {k for k, _ in query}
-    for k, v in {**UTM, "utm_content": day}.items():
+    for k, v in {**UTM, "utm_content": slug or day}.items():
         if k not in present:
             query.append((k, v))
     return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
@@ -65,13 +66,8 @@ def title_for(day: str, item: dict) -> str:
     """TikTok の本文。リンクはタップできないので短く1行だけ添える。"""
     blocks = [b.strip() for b in reel_caption(day, item).split("\n\n") if b.strip()]
     tags = [t for t in (blocks[-1].split() if blocks and blocks[-1].startswith("#") else []) if t.startswith("#")]
-    body = []
-    for b in blocks:
-        if b.startswith("#"):
-            continue
-        kept = [ln for ln in b.split("\n") if "@locoreach_ai" not in ln]
-        if kept:
-            body.append("\n".join(kept))
+    body = strip_lines([b for b in blocks if not b.startswith("#")],
+                       ("@locoreach_ai", PROFILE_LINE))
     text = "\n\n".join(body)
     text += "\n\n詳しくは " + link_with_utm(day)
     if tags:
