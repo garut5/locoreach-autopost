@@ -50,6 +50,9 @@ on:
         options: [all, instagram, youtube, tiktok, threads]
         default: all
 
+permissions:
+  contents: write
+
 jobs:
   reel:
     runs-on: ubuntu-latest
@@ -147,8 +150,22 @@ jobs:
           python3 video/short.py --source "$SRC" --day "${{ steps.name.outputs.day }}"
           python3 video/cards.py --source "$SRC" --day "${{ steps.name.outputs.day }}" --outdir out/cards
 
+      # cron が遅れて翌朝に流れると、その時刻にはまだ前日の記事しか無く、
+      # 見張りが投げ直したぶんと合わせて同じ記事が2回出る（2026-08-29）。
+      # 「実行が重なったか」ではなく「その記事をもう出したか」で見る。
+      # 動画を作る前に判定して、無駄な合成と R2 への書き込みも避ける。
+      - name: 同じ記事を二度出さない
+        id: dedupe
+        if: ${{ steps.cfg.outputs.publish == 'yes' && steps.cfg.outputs.source == 'article' }}
+        run: |
+          if python3 scripts/posted.py check --channel reel --item out/cards/post.json; then
+            echo "fresh=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "fresh=0" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: ナレーション音声を合成
-        if: ${{ steps.cfg.outputs.narration == 'voicevox' }}
+        if: ${{ steps.cfg.outputs.narration == 'voicevox' && steps.dedupe.outputs.fresh != '0' }}
         env:
           VOICEVOX_URL: http://127.0.0.1:50021
           VOICEVOX_SPEAKER_NAME: ${{ vars.VOICEVOX_SPEAKER_NAME || '玄野武宏' }}
@@ -179,6 +196,7 @@ jobs:
 
       - name: 動画を作る
         id: build
+        if: ${{ steps.dedupe.outputs.fresh != '0' }}
         env:
           IN_FORMAT: ${{ steps.cfg.outputs.format }}
         run: |
@@ -195,7 +213,10 @@ jobs:
           fi
           python3 video/build.py "${ARGS[@]}"
 
+      # 「動画を作る」を飛ばした回にここが走ると、無い out/reel.mp4 を
+      # 見に行って落ちる。失敗通知まで鳴るので、同じ条件で塞ぐ。
       - name: 生成物を確認
+        if: ${{ steps.dedupe.outputs.fresh != '0' }}
         run: |
           ls -la out/
           ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_name,width,height \
@@ -203,6 +224,7 @@ jobs:
           ffmpeg -hide_banner -i out/reel.mp4 -af volumedetect -f null - 2>&1 | grep -E "mean_volume|max_volume"
 
       - uses: actions/upload-artifact@v4
+        if: ${{ steps.dedupe.outputs.fresh != '0' }}
         with:
           name: reel-${{ steps.name.outputs.day }}
           path: out/
@@ -211,6 +233,7 @@ jobs:
       # ここから先は R2 の認証情報が無ければ自動でスキップされる
       - name: R2 へ置く
         id: upload
+        if: ${{ steps.dedupe.outputs.fresh != '0' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -229,7 +252,7 @@ jobs:
           echo "配信URLが 200 を返しません: $URL"; exit 1
 
       - name: Instagram Reels へ投稿
-        if: ${{ !cancelled() && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'instagram') && steps.upload.outputs.video_url != '' }}
+        if: ${{ !cancelled() && steps.dedupe.outputs.fresh != '0' && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'instagram') && steps.upload.outputs.video_url != '' }}
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
@@ -245,7 +268,7 @@ jobs:
           fi
 
       - name: YouTube ショートへ投稿
-        if: ${{ !cancelled() && steps.build.outcome == 'success' && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'youtube') }}
+        if: ${{ !cancelled() && steps.dedupe.outputs.fresh != '0' && steps.build.outcome == 'success' && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'youtube') }}
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -261,7 +284,7 @@ jobs:
           python3 channels/youtube.py --day "${{ steps.name.outputs.day }}" --file out/reel.mp4 $FLAG
 
       - name: TikTok へ投稿
-        if: ${{ !cancelled() && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'tiktok') && steps.upload.outputs.video_url != '' }}
+        if: ${{ !cancelled() && steps.dedupe.outputs.fresh != '0' && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'tiktok') && steps.upload.outputs.video_url != '' }}
         env:
           TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
@@ -278,7 +301,7 @@ jobs:
           python3 channels/tiktok.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
 
       - name: Threads へ動画を投稿
-        if: ${{ !cancelled() && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'threads') && steps.upload.outputs.video_url != '' }}
+        if: ${{ !cancelled() && steps.dedupe.outputs.fresh != '0' && (steps.cfg.outputs.targets == 'all' || steps.cfg.outputs.targets == 'threads') && steps.upload.outputs.video_url != '' }}
         env:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
@@ -291,15 +314,43 @@ jobs:
           if [ "${{ steps.cfg.outputs.publish }}" = "yes" ]; then FLAG=""; fi
           python3 channels/threads_video.py --day "${{ steps.name.outputs.day }}" --video-url "${{ steps.upload.outputs.video_url }}" $FLAG
 
+      # 投稿済みで飛ばした回もURLは空になる。そのときこの文言を出すと
+      # 原因を取り違えるので、未投稿の回だけに限る
       - name: R2 が未設定のとき
-        if: ${{ steps.upload.outputs.video_url == '' }}
+        if: ${{ steps.upload.outputs.video_url == '' && steps.dedupe.outputs.fresh != '0' }}
         run: |
           echo "CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID が未設定のため、"
           echo "アップロードと投稿を行っていません。動画は Artifacts にあります。"
 
+      - name: 投稿済みのため出しませんでした
+        if: ${{ steps.dedupe.outputs.fresh == '0' }}
+        run: |
+          echo "この記事はすでに縦動画として投稿済みです。二重投稿になるため出していません。"
+          echo "posted.json の reel を見てください。"
+
       # 定期実行は誰も見ていない時間に走る。落ちたことに気づけないと、
       # 記事だけ出て SNS が止まった状態が何日も続く。
       # NOTIFY_WEBHOOK 未設定なら何もしない（終了コード0）。
+      # 出したことを記録する。次に同じ記事で走っても止まるようにするため。
+      # 最新の main に載せ直してから書く。ほかのワークフローも同じ
+      # posted.json を触るので、そのまま push すると弾かれる。
+      - name: 投稿済みとして記録する
+        if: ${{ success() && steps.dedupe.outputs.fresh == '1' }}
+        run: |
+          for i in 1 2 3 4; do
+            git fetch -q origin "${GITHUB_REF_NAME}"
+            git reset -q --hard "origin/${GITHUB_REF_NAME}"
+            python3 scripts/posted.py record --channel reel --item out/cards/post.json
+            git add posted.json
+            if git diff --cached --quiet; then echo "記録する変更はありません"; exit 0; fi
+            git -c user.name="locoreach-bot" -c user.email="info@camomile.co.jp" \
+                commit -q -m "chore: 縦動画の投稿済みを記録"
+            if git push -q origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            echo "  push に失敗しました。$((2 ** i))秒後に再試行します（$i/4）"
+            sleep $((2 ** i))
+          done
+          echo "記録を push できませんでした"; exit 1
+
       - name: 失敗を Google Chat へ知らせる
         if: failure()
         env:

@@ -21,6 +21,9 @@ on:
         options: [article, fixed]
         default: article
 
+permissions:
+  contents: write
+
 jobs:
   post:
     runs-on: ubuntu-latest
@@ -46,9 +49,22 @@ jobs:
           python3 scripts/make_post.py --outdir out/post
           echo "ready=1" >> "$GITHUB_OUTPUT"
 
+      # cron が遅れて翌朝に流れると、その時刻にはまだ前日の記事しか無く、
+      # 見張りが投げ直したぶんと合わせて同じ記事が2回出る（2026-08-29）。
+      # 「実行が重なったか」ではなく「その記事をもう出したか」で見る。
+      - name: 同じ記事を二度出さない
+        id: dedupe
+        if: ${{ steps.make.outputs.ready == '1' }}
+        run: |
+          if python3 scripts/posted.py check --channel carousel --item out/post/post.json; then
+            echo "fresh=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "fresh=0" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 画像を R2 へ置く
         id: upload
-        if: ${{ steps.make.outputs.ready == '1' }}
+        if: ${{ steps.make.outputs.ready == '1' && steps.dedupe.outputs.fresh == '1' }}
         continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -78,7 +94,10 @@ jobs:
           PY
           echo "ready=1" >> "$GITHUB_OUTPUT"
 
+      # 投稿済みと判定された回は、固定セットに落とさずここで終える。
+      # 落とすと「毎週同じ7本」が割り込むことになり、記事連動が崩れる。
       - name: 投稿する
+        if: ${{ steps.dedupe.outputs.fresh != '0' }}
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
@@ -90,6 +109,34 @@ jobs:
             echo "記事から作れなかったので、従来の固定セットで投稿します"
           fi
           python3 post.py
+
+      - name: 投稿済みのため出しませんでした
+        if: ${{ steps.dedupe.outputs.fresh == '0' }}
+        run: |
+          echo "この記事はすでにカルーセルとして投稿済みです。二重投稿になるため出していません。"
+          echo "posted.json の carousel を見てください。"
+
+      # 出したことを記録する。次に同じ記事で走っても止まるようにするため。
+      # dry-run の回は記録しない（出していないので）。
+      #
+      # 最新の main に載せ直してから書く。ほかのワークフローも同じ
+      # posted.json を触るので、そのまま push すると弾かれる。
+      - name: 投稿済みとして記録する
+        if: ${{ success() && steps.dedupe.outputs.fresh == '1' && inputs.dry_run != '1' }}
+        run: |
+          for i in 1 2 3 4; do
+            git fetch -q origin "${GITHUB_REF_NAME}"
+            git reset -q --hard "origin/${GITHUB_REF_NAME}"
+            python3 scripts/posted.py record --channel carousel --item out/post/post.json
+            git add posted.json
+            if git diff --cached --quiet; then echo "記録する変更はありません"; exit 0; fi
+            git -c user.name="locoreach-bot" -c user.email="info@camomile.co.jp" \
+                commit -q -m "chore: カルーセルの投稿済みを記録"
+            if git push -q origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            echo "  push に失敗しました。$((2 ** i))秒後に再試行します（$i/4）"
+            sleep $((2 ** i))
+          done
+          echo "記録を push できませんでした"; exit 1
 
       # 定期実行は誰も見ていない時間に走る。落ちたことに気づけないと、
       # 記事だけ出て SNS が止まった状態が何日も続く。
