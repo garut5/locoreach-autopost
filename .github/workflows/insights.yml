@@ -7,7 +7,7 @@ name: 反応を集計する（Instagram）
 # 反応が出た方向に寄せ続けることだけで、そのための材料を作る。
 on:
   schedule:
-    - cron: "0 0 1 * *"
+    - cron: "29 0 1 * *"
   workflow_dispatch:
 
 permissions:

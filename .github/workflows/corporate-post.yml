@@ -23,7 +23,7 @@ name: 会社サイトの自動投稿を起こす（camomile.co.jp）
 on:
   schedule:
     # 02:00 UTC = 11:00 JST。記事の公開（07:03 JST）より十分あと
-    - cron: "0 2 * * *"
+    - cron: "23 2 * * *"
   workflow_dispatch:
 
 jobs:

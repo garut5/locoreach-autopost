@@ -12,7 +12,7 @@ name: 縦動画を作って投稿する（Reels / ショート / TikTok / Thread
 on:
   schedule:
     # 09:00 UTC = 18:00 JST
-    - cron: "0 9 * * *"
+    - cron: "17 9 * * *"
   workflow_dispatch:
     inputs:
       day:

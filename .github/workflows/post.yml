@@ -8,7 +8,18 @@ name: daily-instagram-post
 # 記事から作れなかった日は、従来の固定セットに落ちる（投稿を止めない）。
 on:
   schedule:
-    - cron: '0 11 * * *'
+    # 毎時00分にしない。GitHub の公式ドキュメントにこう書いてある。
+    #
+    #   The schedule event can be delayed during periods of high loads of
+    #   GitHub Actions workflow runs. High load times include the start of
+    #   every hour. If the load is sufficiently high enough, some queued
+    #   jobs may be dropped. To decrease the chance of delay, schedule your
+    #   workflow to run at a different time of the hour.
+    #
+    # 定期実行7本すべてを 00分 に置いていた。実測の遅れ（2026-08-25〜26）は
+    # +24〜57分で、これは「毎時のはじまりが混む」という説明とよく合う。
+    # 7本とも別々の分に散らした（うちのワークフロー同士でも固めない）。
+    - cron: '41 11 * * *'
   workflow_dispatch:
     inputs:
       dry_run:

@@ -16,7 +16,7 @@ name: SNSトークンを自動更新
 # 手動実行のときにしか使わない。必要になったら手で入れ直せばよい。
 on:
   schedule:
-    - cron: "0 1 * * 1" # 毎週月曜 10:00 JST
+    - cron: "13 1 * * 1" # 毎週月曜 10:00 JST
   workflow_dispatch:
 
 permissions:

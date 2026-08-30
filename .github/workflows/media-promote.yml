@@ -9,7 +9,7 @@ name: 記事を Threads へ拡散
 on:
   schedule:
     # 03:00 UTC = 12:00 JST。記事の公開（07:03 JST）から5時間後
-    - cron: "0 3 * * *"
+    - cron: "37 3 * * *"
   workflow_dispatch:
     inputs:
       slug:
