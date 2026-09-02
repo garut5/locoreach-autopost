@@ -8,6 +8,11 @@ workers_dev = false
 # すべて UTC。GitHub の schedule と同じ時刻に置いてある。
 # 先にこちらが投げるので、あとから GitHub の遅い schedule が発火しても
 # 投稿側の重複判定で止まる。
+# ログを残す。9/2 に「Worker は成功しているのに dispatch が届かない」
+# という状態を調べたとき、ログが無効で原因を絞り込めなかった。
+[observability]
+enabled = true
+
 [triggers]
 crons = [
   "20 2 * * *",   # 11:20 JST 会社サイト

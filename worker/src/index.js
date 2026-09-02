@@ -99,6 +99,7 @@ async function dispatch(env, workflow, inputs) {
     },
   );
   // 応答本文にはトークンは入らないが、念のため状態コードだけを扱う
+  console.log(`dispatch ${workflow} -> ${res.status}`);
   if (!res.ok) throw new Error(`${workflow} dispatch ${res.status}`);
 }
 
@@ -122,6 +123,7 @@ export default {
       const jobs = JOBS[event.cron];
       if (!jobs) return;
 
+      console.log(`cron=${event.cron} jobs=${jobs.length}`);
       let slug;
       try {
         slug = await todaySlug();
@@ -134,10 +136,11 @@ export default {
         return;
       }
 
+      console.log(`slug=${slug}`);
       const done = await posted();
       const failed = [];
       for (const [workflow, inputs, key] of jobs) {
-        if (key && (done[key] || []).includes(slug)) continue; // 投稿済み
+        if (key && (done[key] || []).includes(slug)) { console.log(`skip ${workflow} (投稿済み)`); continue; }
         try {
           await dispatch(env, workflow, inputs);
         } catch (e) {
