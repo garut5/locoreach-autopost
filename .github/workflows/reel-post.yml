@@ -53,6 +53,14 @@ on:
 permissions:
   contents: write
 
+# 同じワークフローを並行させない。Worker が 18:15 に投げ、控えが 18:25 に
+# 投げると、実行が9〜10分かかる日には2本が重なる（9/2 の縦動画の実行は9分52秒）。
+# 重なると、どちらも posted.json を「未投稿」と読んでしまい、
+# 記録より先に両方が投稿してしまう。
+concurrency:
+  group: reel-post
+  cancel-in-progress: false
+
 jobs:
   reel:
     runs-on: ubuntu-latest
@@ -158,6 +166,11 @@ jobs:
         id: dedupe
         if: ${{ steps.cfg.outputs.publish == 'yes' && steps.cfg.outputs.source == 'article' }}
         run: |
+          # posted.json は checkout 時点のもの。先に走っている実行が
+          # 記録を push していても、こちらの手元は古いままになる。
+          # 判定の直前に取り直す。
+          git fetch -q origin "${GITHUB_REF_NAME}"
+          git checkout -q "origin/${GITHUB_REF_NAME}" -- posted.json
           if python3 scripts/posted.py check --channel reel --item out/cards/post.json; then
             echo "fresh=1" >> "$GITHUB_OUTPUT"
           else
