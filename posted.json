@@ -24,6 +24,7 @@
     "gbp-suspension-recovery",
     "gbp-unwanted-edits",
     "meo-service-cost",
-    "review-request-email"
+    "review-request-email",
+    "meo-diy-or-outsource"
   ]
 }
