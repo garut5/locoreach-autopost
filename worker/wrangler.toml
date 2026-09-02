@@ -1,0 +1,16 @@
+name = "locoreach-scheduler"
+main = "src/index.js"
+compatibility_date = "2026-09-02"
+
+# 公開URLを作らない。外から叩けるものではないので
+workers_dev = false
+
+# すべて UTC。GitHub の schedule と同じ時刻に置いてある。
+# 先にこちらが投げるので、あとから GitHub の遅い schedule が発火しても
+# 投稿側の重複判定で止まる。
+[triggers]
+crons = [
+  "20 2 * * *",   # 11:20 JST 会社サイト
+  "15 9 * * *",   # 18:15 JST 縦動画
+  "40 11 * * *",  # 20:40 JST カルーセル・記事拡散
+]
