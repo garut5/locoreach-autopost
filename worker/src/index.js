@@ -31,22 +31,33 @@ const POSTED =
   "https://raw.githubusercontent.com/garut5/locoreach-autopost/main/posted.json";
 const UA = "locoreach-scheduler/1.0";
 
-// cron（UTC）→ その時刻に投げるもの。
-// key は posted.json のキー。null は記録を持たないので毎回投げる。
+// cron（UTC）→ UTC の時 → その時刻に投げるもの。
+// 3つ目の値は posted.json のキー。null は記録を持たないので毎回投げる。
+//
+// なぜ2段になっているか。Cloudflare の無料枠は cron トリガーが
+// 1アカウント5本まで。ほかの Worker（fanmap-cron / foodtap-cron /
+// loconight-cron）が3本使っているので、ここで使えるのは2本しかない。
+// 3つの時刻を2本に収めるため、18:00 と 20:00 を "0 9,11" にまとめた。
+// まとめると event.cron はどちらの発火でも "0 9,11 * * *" が返るので、
+// 式だけでは区別できない。event.scheduledTime の時で振り分ける。
 const JOBS = {
-  // 11:20 JST 会社サイトの WP-Cron を起こす
-  "20 2 * * *": [["corporate-post.yml", {}, null]],
-  // 18:15 JST 縦動画
-  "15 9 * * *": [[
-    "reel-post.yml",
-    { publish: "yes", targets: "all", format: "short", source: "article", narration: "voicevox" },
-    "reel",
-  ]],
-  // 20:40 JST カルーセルと記事拡散
-  "40 11 * * *": [
-    ["post.yml", { dry_run: "0", source: "article" }, "carousel"],
-    ["media-promote.yml", { dry_run: "no" }, "threads"],
-  ],
+  // 11:00 JST 会社サイトの WP-Cron を起こす
+  "0 2 * * *": {
+    2: [["corporate-post.yml", {}, null]],
+  },
+  "0 9,11 * * *": {
+    // 18:00 JST 縦動画
+    9: [[
+      "reel-post.yml",
+      { publish: "yes", targets: "all", format: "short", source: "article", narration: "voicevox" },
+      "reel",
+    ]],
+    // 20:00 JST カルーセルと記事拡散
+    11: [
+      ["post.yml", { dry_run: "0", source: "article" }, "carousel"],
+      ["media-promote.yml", { dry_run: "no" }, "threads"],
+    ],
+  },
 };
 
 /** JST の「今日」を YYYY-MM-DD で返す。 */
@@ -120,10 +131,15 @@ async function notify(env, text) {
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
-      const jobs = JOBS[event.cron];
-      if (!jobs) return;
+      const hour = new Date(event.scheduledTime).getUTCHours();
+      const jobs = JOBS[event.cron]?.[hour];
+      if (!jobs) {
+        // 式は登録されているのに中身が無い＝ wrangler.toml と JOBS がずれている
+        console.log(`cron=${event.cron} hour=${hour} に対応する仕事がありません`);
+        return;
+      }
 
-      console.log(`cron=${event.cron} jobs=${jobs.length}`);
+      console.log(`cron=${event.cron} hour=${hour} jobs=${jobs.length}`);
       let slug;
       try {
         slug = await todaySlug();
