@@ -10,7 +10,8 @@
     "gbp-unwanted-edits",
     "meo-service-cost",
     "review-request-email",
-    "meo-diy-or-outsource"
+    "meo-diy-or-outsource",
+    "no-inquiries"
   ],
   "carousel": [
     "average-spend",
