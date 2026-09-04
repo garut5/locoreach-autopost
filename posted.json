@@ -30,6 +30,7 @@
     "meo-service-cost",
     "review-request-email",
     "meo-diy-or-outsource",
-    "no-inquiries"
+    "no-inquiries",
+    "sns-sustainability"
   ]
 }
