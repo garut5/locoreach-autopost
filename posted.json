@@ -17,7 +17,8 @@
     "ai-search-local-visibility",
     "ai-booking-response",
     "fake-review-detection",
-    "jizokuka-website"
+    "jizokuka-website",
+    "gbp-photos"
   ],
   "carousel": [
     "average-spend",
