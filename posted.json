@@ -51,6 +51,7 @@
     "ai-booking-response",
     "fake-review-detection",
     "jizokuka-website",
-    "gbp-photos"
+    "gbp-photos",
+    "gbp-post-frequency"
   ]
 }
