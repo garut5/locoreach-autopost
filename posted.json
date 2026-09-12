@@ -37,7 +37,8 @@
     "fake-review-detection",
     "jizokuka-website",
     "gbp-photos",
-    "gbp-post-frequency"
+    "gbp-post-frequency",
+    "food-cost-ratio"
   ],
   "reel": [
     "average-spend",
