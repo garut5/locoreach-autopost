@@ -20,7 +20,8 @@
     "jizokuka-website",
     "gbp-photos",
     "gbp-post-frequency",
-    "food-cost-ratio"
+    "food-cost-ratio",
+    "website-booking-flow"
   ],
   "carousel": [
     "average-spend",
