@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import argparse
 import sys
 import time
 import urllib.error
@@ -41,19 +42,32 @@ def reachable(url: str) -> int:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser()
+    # 起こす前の下見に使う。1回だけ見て、載っていなければ黙って1を返す。
+    # ここで載っていれば wp-cron を叩く必要がない（遅れて走った2本目が
+    # これで静かに終わる。失敗通知を鳴らさないため）。
+    ap.add_argument("--once", action="store_true", help="1回だけ見る（待たない・騒がない）")
+    args = ap.parse_args()
+
+    tries = 1 if args.once else TRIES
+
     a = _article.load()
     url = f"{BASE}/{PREFIX}{a['slug']}/"
     print(f"今日の記事: {a['title']}")
     print(f"確認先    : {url}")
 
-    for i in range(1, TRIES + 1):
+    for i in range(1, tries + 1):
         code = reachable(url)
         print(f"  試行 {i}: HTTP {code}")
         if code == 200:
             print("✓ 会社サイトに載っています")
             return 0
-        if i < TRIES:
+        if i < tries:
             time.sleep(WAIT)
+
+    if args.once:
+        print("まだ載っていません。WP-Cron を起こします")
+        return 1
 
     print(
         "会社サイトに今日の記事が載っていません。\n"

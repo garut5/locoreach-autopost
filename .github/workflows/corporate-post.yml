@@ -37,7 +37,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      # 遅れて走った2本目を、ここで静かに終わらせる。
+      #
+      # このワークフローは1日2回動く（11:20 JST の手動起動と、数時間
+      # 遅れて発火する定期実行）。1本目で記事が載っていれば2本目の仕事は
+      # 無いのに、wp-cron.php への接続が時々タイムアウトして失敗で終わり、
+      # そのたび Google Chat に通知が出ていた（9/16・9/25・9/26・9/28）。
+      # 本当に困ったときの通知が、この空振りに埋もれる。
+      - name: すでに載っていないか先に見る
+        id: already
+        run: |
+          if python3 scripts/corporate_check.py --once; then
+            echo "done=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=0" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: WP-Cron を起こす
+        if: ${{ steps.already.outputs.done != '1' }}
         run: |
           URL="https://camomile.co.jp/wp-cron.php?doing_wp_cron=$(date +%s)"
           for i in 1 2 3; do
@@ -50,6 +67,7 @@ jobs:
           echo "wp-cron.php が 200 を返しませんでした"; exit 1
 
       - name: 会社サイトに今日の記事が載ったか確かめる
+        if: ${{ steps.already.outputs.done != '1' }}
         run: python3 scripts/corporate_check.py
 
       - name: 失敗を Google Chat へ知らせる

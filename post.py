@@ -85,11 +85,19 @@ def threads_text(caption, limit=490):
     return cut.rstrip() + "…"
 
 
-# ---------------- Instagram: フィード（カルーセル） ----------------
-def post_ig_feed(urls, caption):
+# ---------------- Instagram: アカウントID ----------------
+# フィードを出さずにストーリーズだけ出す回があるので、ID の取得を分けてある。
+# （前回フィードだけ成功していた場合、残りはストーリーズだけになる）
+def ig_uid():
     me = _get(IG_BASE, "me", {"fields": "user_id,username", "access_token": IG_TOKEN})
     uid = str(me.get("user_id") or me.get("id"))
-    print(f"  [IGフィード] アカウント: {me.get('username')} (id={uid})")
+    print(f"  [Instagram] アカウント: {me.get('username')} (id={uid})")
+    return uid
+
+
+# ---------------- Instagram: フィード（カルーセル） ----------------
+def post_ig_feed(urls, caption):
+    uid = ig_uid()
     children = []
     for i, u in enumerate(urls, 1):
         it = _post(IG_BASE, f"{uid}/media",
@@ -140,6 +148,33 @@ def post_threads(urls, caption):
     print("  ✅ Threads投稿完了:", pub)
 
 
+POSTED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "posted.json")
+
+# 1回の実行で出しうるチャネル。posted.json には "carousel:ig_feed" のように入る
+CHANNELS = ("ig_feed", "ig_story", "threads")
+
+
+def already_done(slug):
+    """その記事を、どのチャネルまで出し終えているか。
+
+    posted.json の "carousel" は「3チャネルすべて出した」印で、
+    見張りや promote.py がこれを見ている。意味を変えないために、
+    途中まで出せた回は "carousel:ig_feed" のようなキーに分けて書く。
+
+    こうしておくと、一部だけ失敗した回を投げ直しても、
+    成功済みのチャネルには二度出さない。2026-09-30 に IGフィードだけ
+    失敗し、遅れて走った定期実行が Threads へ同じ投稿を重ねて出した。
+    """
+    if not slug or not os.path.exists(POSTED):
+        return set()
+    try:
+        state = json.load(open(POSTED, encoding="utf-8"))
+    except Exception as e:
+        print("  posted.json を読めませんでした（全チャネル未投稿として扱います）:", e)
+        return set()
+    return {ch for ch in CHANNELS if slug in (state.get(f"carousel:{ch}") or [])}
+
+
 def main():
     key, stamp = jst_today_key()
     content = json.load(open(os.path.join(os.path.dirname(__file__), "content.json"), encoding="utf-8"))
@@ -174,38 +209,69 @@ def main():
 
     results = {}
 
+    # 前回の実行で出し終えているチャネルは、もう出さない
+    slug = (item.get("slug") or "").strip()
+    done = already_done(slug)
+    if done:
+        print(f" → 出し終えているので飛ばします: {', '.join(sorted(done))}")
+
     # Instagram（フィード → ストーリーズ）
     if IG_TOKEN:
-        try:
-            uid = post_ig_feed(urls, caption)
-            results["ig_feed"] = "OK"
+        uid = None
+        if "ig_feed" in done:
+            results["ig_feed"] = "済"
+        else:
+            try:
+                uid = post_ig_feed(urls, caption)
+                results["ig_feed"] = "OK"
+            except Exception as e:
+                results["ig_feed"] = f"NG: {e}"
+                print("  ⚠ IGフィード失敗:", e)
+
+        if "ig_story" in done:
+            results["ig_story"] = "済"
+        # フィードが出ていない回はストーリーズも出さない（従来どおり）
+        elif results.get("ig_feed") in ("OK", "済"):
             try:
                 # ストーリーズ専用画像があればそれを使う（無ければ従来どおり1枚目）
-                post_ig_story(uid, story_url)
+                post_ig_story(uid or ig_uid(), story_url)
                 results["ig_story"] = "OK"
             except Exception as e:
                 results["ig_story"] = f"NG: {e}"
                 print("  ⚠ IGストーリーズ失敗:", e)
-        except Exception as e:
-            results["ig_feed"] = f"NG: {e}"
-            print("  ⚠ IGフィード失敗:", e)
     else:
         print("  IG_TOKEN 未設定のためInstagramはスキップ")
 
     # Threads
     if TH_TOKEN:
-        try:
-            post_threads(urls, caption)
-            results["threads"] = "OK"
-        except Exception as e:
-            results["threads"] = f"NG: {e}"
-            print("  ⚠ Threads失敗:", e)
+        if "threads" in done:
+            results["threads"] = "済"
+        else:
+            try:
+                post_threads(urls, caption)
+                results["threads"] = "OK"
+            except Exception as e:
+                results["threads"] = f"NG: {e}"
+                print("  ⚠ Threads失敗:", e)
     else:
         print("  THREADS_TOKEN 未設定のためThreadsはスキップ")
 
     print("=== 投稿結果 ===", json.dumps(results, ensure_ascii=False))
+
+    # どこまで出せたかをワークフローへ渡す。一部が失敗した回でも、
+    # 成功したチャネルは記録してほしいので、異常終了より先に書く。
+    out = os.environ.get("POST_RESULT", "").strip()
+    if out:
+        d = os.path.dirname(out)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump({"slug": slug, "results": results}, f, ensure_ascii=False, indent=2)
+        print(f" → 結果を書きました: {out}")
+
     # いずれかが失敗したら異常終了（Actionsで気づけるように）
-    if any(v != "OK" for v in results.values()):
+    bad = {k: v for k, v in results.items() if v not in ("OK", "済")}
+    if bad:
         raise SystemExit("一部のチャネルで投稿に失敗しました: " + json.dumps(results, ensure_ascii=False))
 
 

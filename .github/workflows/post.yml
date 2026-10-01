@@ -126,6 +126,9 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           DRY_RUN: ${{ inputs.dry_run }}
+          # どのチャネルまで出せたかの書き出し先。一部だけ成功した回を
+          # 記録するために使う（記録しないと、次の実行が成功ぶんも出し直す）
+          POST_RESULT: out/post/result.json
         run: |
           if [ "${{ steps.check.outputs.ready }}" = "1" ]; then
             export POST_ITEM=out/post/post.json
@@ -143,15 +146,23 @@ jobs:
       # 出したことを記録する。次に同じ記事で走っても止まるようにするため。
       # dry-run の回は記録しない（出していないので）。
       #
+      # **失敗した回でも走らせる（always）。** 一部のチャネルだけ成功した回に
+      # 何も記録しないと、遅れて走った定期実行が成功ぶんまで出し直す。
+      # 2026-09-30、IGフィードだけ落ちた日に Threads へ同じ投稿が2回出た。
+      # 成功したチャネルは "carousel:threads" のように個別に記録し、
+      # 3つ揃ったときだけ "carousel" に書く（見張りはこちらを見ている）。
+      #
       # 最新の main に載せ直してから書く。ほかのワークフローも同じ
       # posted.json を触るので、そのまま push すると弾かれる。
+      # reset --hard は追跡していない out/ を消さないので、結果は残る。
       - name: 投稿済みとして記録する
-        if: ${{ success() && steps.dedupe.outputs.fresh == '1' && inputs.dry_run != '1' }}
+        if: ${{ always() && steps.dedupe.outputs.fresh == '1' && inputs.dry_run != '1' }}
         run: |
           for i in 1 2 3 4; do
             git fetch -q origin "${GITHUB_REF_NAME}"
             git reset -q --hard "origin/${GITHUB_REF_NAME}"
-            python3 scripts/posted.py record --channel carousel --item out/post/post.json
+            python3 scripts/posted.py record-result --channel carousel \
+                --item out/post/post.json --result out/post/result.json
             git add posted.json
             if git diff --cached --quiet; then echo "記録する変更はありません"; exit 0; fi
             git -c user.name="locoreach-bot" -c user.email="info@camomile.co.jp" \
