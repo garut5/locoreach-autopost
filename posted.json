@@ -75,7 +75,8 @@
     "small-shop-budget",
     "gbp-booking-link",
     "gbp-ownership-transfer",
-    "gbp-insights-reading"
+    "gbp-insights-reading",
+    "shop-photos"
   ],
   "reel": [
     "average-spend",
@@ -112,6 +113,15 @@
     "gbp-booking-link",
     "gbp-ownership-transfer",
     "gbp-insights-reading",
+    "shop-photos"
+  ],
+  "carousel:ig_feed": [
+    "shop-photos"
+  ],
+  "carousel:ig_story": [
+    "shop-photos"
+  ],
+  "carousel:threads": [
     "shop-photos"
   ]
 }
