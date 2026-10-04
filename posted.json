@@ -79,7 +79,8 @@
     "gbp-ownership-transfer",
     "gbp-insights-reading",
     "shop-photos",
-    "local-seo-basics"
+    "local-seo-basics",
+    "booking-system-choice"
   ],
   "reel": [
     "average-spend",
@@ -122,14 +123,17 @@
   ],
   "carousel:ig_feed": [
     "shop-photos",
-    "local-seo-basics"
+    "local-seo-basics",
+    "booking-system-choice"
   ],
   "carousel:ig_story": [
     "shop-photos",
-    "local-seo-basics"
+    "local-seo-basics",
+    "booking-system-choice"
   ],
   "carousel:threads": [
     "shop-photos",
-    "local-seo-basics"
+    "local-seo-basics",
+    "booking-system-choice"
   ]
 }
