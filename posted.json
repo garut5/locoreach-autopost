@@ -81,7 +81,8 @@
     "gbp-insights-reading",
     "shop-photos",
     "local-seo-basics",
-    "booking-system-choice"
+    "booking-system-choice",
+    "subsidy-website-eligibility"
   ],
   "reel": [
     "average-spend",
@@ -126,16 +127,19 @@
   "carousel:ig_feed": [
     "shop-photos",
     "local-seo-basics",
-    "booking-system-choice"
+    "booking-system-choice",
+    "subsidy-website-eligibility"
   ],
   "carousel:ig_story": [
     "shop-photos",
     "local-seo-basics",
-    "booking-system-choice"
+    "booking-system-choice",
+    "subsidy-website-eligibility"
   ],
   "carousel:threads": [
     "shop-photos",
     "local-seo-basics",
-    "booking-system-choice"
+    "booking-system-choice",
+    "subsidy-website-eligibility"
   ]
 }
