@@ -85,7 +85,8 @@
     "local-seo-basics",
     "booking-system-choice",
     "subsidy-website-eligibility",
-    "restaurant-repeat-rate"
+    "restaurant-repeat-rate",
+    "review-rating-benchmark"
   ],
   "reel": [
     "average-spend",
@@ -134,20 +135,23 @@
     "local-seo-basics",
     "booking-system-choice",
     "subsidy-website-eligibility",
-    "restaurant-repeat-rate"
+    "restaurant-repeat-rate",
+    "review-rating-benchmark"
   ],
   "carousel:ig_story": [
     "shop-photos",
     "local-seo-basics",
     "booking-system-choice",
     "subsidy-website-eligibility",
-    "restaurant-repeat-rate"
+    "restaurant-repeat-rate",
+    "review-rating-benchmark"
   ],
   "carousel:threads": [
     "shop-photos",
     "local-seo-basics",
     "booking-system-choice",
     "subsidy-website-eligibility",
-    "restaurant-repeat-rate"
+    "restaurant-repeat-rate",
+    "review-rating-benchmark"
   ]
 }
