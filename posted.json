@@ -131,7 +131,8 @@
     "subsidy-website-eligibility",
     "restaurant-repeat-rate",
     "review-rating-benchmark",
-    "ai-menu-translation"
+    "ai-menu-translation",
+    "outdated-info-in-ai"
   ],
   "carousel:ig_feed": [
     "shop-photos",
