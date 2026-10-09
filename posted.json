@@ -89,7 +89,8 @@
     "subsidy-website-eligibility",
     "restaurant-repeat-rate",
     "review-rating-benchmark",
-    "ai-menu-translation"
+    "ai-menu-translation",
+    "outdated-info-in-ai"
   ],
   "reel": [
     "average-spend",
@@ -142,7 +143,8 @@
     "subsidy-website-eligibility",
     "restaurant-repeat-rate",
     "review-rating-benchmark",
-    "ai-menu-translation"
+    "ai-menu-translation",
+    "outdated-info-in-ai"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -151,7 +153,8 @@
     "subsidy-website-eligibility",
     "restaurant-repeat-rate",
     "review-rating-benchmark",
-    "ai-menu-translation"
+    "ai-menu-translation",
+    "outdated-info-in-ai"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -160,6 +163,7 @@
     "subsidy-website-eligibility",
     "restaurant-repeat-rate",
     "review-rating-benchmark",
-    "ai-menu-translation"
+    "ai-menu-translation",
+    "outdated-info-in-ai"
   ]
 }
