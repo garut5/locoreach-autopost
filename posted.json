@@ -91,7 +91,8 @@
     "restaurant-repeat-rate",
     "review-rating-benchmark",
     "ai-menu-translation",
-    "outdated-info-in-ai"
+    "outdated-info-in-ai",
+    "missing-reviews"
   ],
   "reel": [
     "average-spend",
@@ -146,7 +147,8 @@
     "restaurant-repeat-rate",
     "review-rating-benchmark",
     "ai-menu-translation",
-    "outdated-info-in-ai"
+    "outdated-info-in-ai",
+    "missing-reviews"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -156,7 +158,8 @@
     "restaurant-repeat-rate",
     "review-rating-benchmark",
     "ai-menu-translation",
-    "outdated-info-in-ai"
+    "outdated-info-in-ai",
+    "missing-reviews"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -166,6 +169,7 @@
     "restaurant-repeat-rate",
     "review-rating-benchmark",
     "ai-menu-translation",
-    "outdated-info-in-ai"
+    "outdated-info-in-ai",
+    "missing-reviews"
   ]
 }
