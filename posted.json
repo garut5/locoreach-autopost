@@ -134,7 +134,8 @@
     "restaurant-repeat-rate",
     "review-rating-benchmark",
     "ai-menu-translation",
-    "outdated-info-in-ai"
+    "outdated-info-in-ai",
+    "missing-reviews"
   ],
   "carousel:ig_feed": [
     "shop-photos",
