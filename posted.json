@@ -93,7 +93,8 @@
     "review-rating-benchmark",
     "ai-menu-translation",
     "outdated-info-in-ai",
-    "missing-reviews"
+    "missing-reviews",
+    "photo-reviews"
   ],
   "reel": [
     "average-spend",
@@ -150,7 +151,8 @@
     "review-rating-benchmark",
     "ai-menu-translation",
     "outdated-info-in-ai",
-    "missing-reviews"
+    "missing-reviews",
+    "photo-reviews"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -161,7 +163,8 @@
     "review-rating-benchmark",
     "ai-menu-translation",
     "outdated-info-in-ai",
-    "missing-reviews"
+    "missing-reviews",
+    "photo-reviews"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -172,6 +175,7 @@
     "review-rating-benchmark",
     "ai-menu-translation",
     "outdated-info-in-ai",
-    "missing-reviews"
+    "missing-reviews",
+    "photo-reviews"
   ]
 }
