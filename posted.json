@@ -50,7 +50,8 @@
     "missing-reviews",
     "photo-reviews",
     "shop-site-analytics",
-    "price-increase-notice"
+    "price-increase-notice",
+    "review-notification-setup"
   ],
   "carousel": [
     "average-spend",
