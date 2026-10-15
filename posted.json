@@ -99,7 +99,8 @@
     "missing-reviews",
     "photo-reviews",
     "shop-site-analytics",
-    "price-increase-notice"
+    "price-increase-notice",
+    "review-notification-setup"
   ],
   "reel": [
     "average-spend",
@@ -162,7 +163,8 @@
     "missing-reviews",
     "photo-reviews",
     "shop-site-analytics",
-    "price-increase-notice"
+    "price-increase-notice",
+    "review-notification-setup"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -176,7 +178,8 @@
     "missing-reviews",
     "photo-reviews",
     "shop-site-analytics",
-    "price-increase-notice"
+    "price-increase-notice",
+    "review-notification-setup"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -190,6 +193,7 @@
     "missing-reviews",
     "photo-reviews",
     "shop-site-analytics",
-    "price-increase-notice"
+    "price-increase-notice",
+    "review-notification-setup"
   ]
 }
