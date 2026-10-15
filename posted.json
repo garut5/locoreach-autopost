@@ -147,7 +147,8 @@
     "missing-reviews",
     "photo-reviews",
     "shop-site-analytics",
-    "price-increase-notice"
+    "price-increase-notice",
+    "review-notification-setup"
   ],
   "carousel:ig_feed": [
     "shop-photos",
