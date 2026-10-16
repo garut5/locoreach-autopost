@@ -150,7 +150,8 @@
     "photo-reviews",
     "shop-site-analytics",
     "price-increase-notice",
-    "review-notification-setup"
+    "review-notification-setup",
+    "ai-customer-data"
   ],
   "carousel:ig_feed": [
     "shop-photos",
