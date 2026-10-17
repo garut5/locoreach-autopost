@@ -153,7 +153,8 @@
     "shop-site-analytics",
     "price-increase-notice",
     "review-notification-setup",
-    "ai-customer-data"
+    "ai-customer-data",
+    "subsidy-schedule"
   ],
   "carousel:ig_feed": [
     "shop-photos",
