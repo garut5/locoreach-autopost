@@ -107,7 +107,8 @@
     "review-notification-setup",
     "ai-customer-data",
     "subsidy-schedule",
-    "gbp-multi-location"
+    "gbp-multi-location",
+    "shop-blog-in-ai-era"
   ],
   "reel": [
     "average-spend",
@@ -178,7 +179,8 @@
     "review-notification-setup",
     "ai-customer-data",
     "subsidy-schedule",
-    "gbp-multi-location"
+    "gbp-multi-location",
+    "shop-blog-in-ai-era"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -196,7 +198,8 @@
     "review-notification-setup",
     "ai-customer-data",
     "subsidy-schedule",
-    "gbp-multi-location"
+    "gbp-multi-location",
+    "shop-blog-in-ai-era"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -214,6 +217,7 @@
     "review-notification-setup",
     "ai-customer-data",
     "subsidy-schedule",
-    "gbp-multi-location"
+    "gbp-multi-location",
+    "shop-blog-in-ai-era"
   ]
 }
