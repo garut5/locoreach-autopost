@@ -117,7 +117,8 @@
     "shop-landing-page",
     "ai-search-traffic-drop",
     "salon-cancellation-policy",
-    "clinic-review-rules"
+    "clinic-review-rules",
+    "clinic-website-rules"
   ],
   "reel": [
     "average-spend",
@@ -197,7 +198,8 @@
     "shop-landing-page",
     "ai-search-traffic-drop",
     "salon-cancellation-policy",
-    "clinic-review-rules"
+    "clinic-review-rules",
+    "clinic-website-rules"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -220,7 +222,8 @@
     "shop-landing-page",
     "ai-search-traffic-drop",
     "salon-cancellation-policy",
-    "clinic-review-rules"
+    "clinic-review-rules",
+    "clinic-website-rules"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -243,6 +246,7 @@
     "shop-landing-page",
     "ai-search-traffic-drop",
     "salon-cancellation-policy",
-    "clinic-review-rules"
+    "clinic-review-rules",
+    "clinic-website-rules"
   ]
 }
