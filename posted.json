@@ -121,7 +121,8 @@
     "salon-cancellation-policy",
     "clinic-review-rules",
     "clinic-website-rules",
-    "subsidy-final-report"
+    "subsidy-final-report",
+    "clinic-gbp-category"
   ],
   "reel": [
     "average-spend",
@@ -205,7 +206,8 @@
     "salon-cancellation-policy",
     "clinic-review-rules",
     "clinic-website-rules",
-    "subsidy-final-report"
+    "subsidy-final-report",
+    "clinic-gbp-category"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -230,7 +232,8 @@
     "salon-cancellation-policy",
     "clinic-review-rules",
     "clinic-website-rules",
-    "subsidy-final-report"
+    "subsidy-final-report",
+    "clinic-gbp-category"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -255,6 +258,7 @@
     "salon-cancellation-policy",
     "clinic-review-rules",
     "clinic-website-rules",
-    "subsidy-final-report"
+    "subsidy-final-report",
+    "clinic-gbp-category"
   ]
 }
