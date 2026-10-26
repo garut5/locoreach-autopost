@@ -179,7 +179,8 @@
     "ai-search-traffic-drop",
     "clinic-review-rules",
     "clinic-website-rules",
-    "subsidy-final-report"
+    "subsidy-final-report",
+    "clinic-gbp-category"
   ],
   "carousel:ig_feed": [
     "shop-photos",
