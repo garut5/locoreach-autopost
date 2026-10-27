@@ -261,6 +261,7 @@
     "clinic-review-rules",
     "clinic-website-rules",
     "subsidy-final-report",
-    "clinic-gbp-category"
+    "clinic-gbp-category",
+    "shop-site-https"
   ]
 }
