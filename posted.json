@@ -127,7 +127,8 @@
     "subsidy-final-report",
     "clinic-gbp-category",
     "shop-site-https",
-    "gbp-photo-removal"
+    "gbp-photo-removal",
+    "ai-meeting-notes"
   ],
   "reel": [
     "average-spend",
@@ -217,7 +218,8 @@
     "subsidy-final-report",
     "clinic-gbp-category",
     "shop-site-https",
-    "gbp-photo-removal"
+    "gbp-photo-removal",
+    "ai-meeting-notes"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -245,7 +247,8 @@
     "subsidy-final-report",
     "clinic-gbp-category",
     "shop-site-https",
-    "gbp-photo-removal"
+    "gbp-photo-removal",
+    "ai-meeting-notes"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -273,6 +276,7 @@
     "subsidy-final-report",
     "clinic-gbp-category",
     "shop-site-https",
-    "gbp-photo-removal"
+    "gbp-photo-removal",
+    "ai-meeting-notes"
   ]
 }
