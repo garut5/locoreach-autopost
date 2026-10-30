@@ -129,7 +129,8 @@
     "clinic-gbp-category",
     "shop-site-https",
     "gbp-photo-removal",
-    "ai-meeting-notes"
+    "ai-meeting-notes",
+    "staff-shortage"
   ],
   "reel": [
     "average-spend",
@@ -221,7 +222,8 @@
     "clinic-gbp-category",
     "shop-site-https",
     "gbp-photo-removal",
-    "ai-meeting-notes"
+    "ai-meeting-notes",
+    "staff-shortage"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -250,7 +252,8 @@
     "clinic-gbp-category",
     "shop-site-https",
     "gbp-photo-removal",
-    "ai-meeting-notes"
+    "ai-meeting-notes",
+    "staff-shortage"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -279,6 +282,7 @@
     "clinic-gbp-category",
     "shop-site-https",
     "gbp-photo-removal",
-    "ai-meeting-notes"
+    "ai-meeting-notes",
+    "staff-shortage"
   ]
 }
