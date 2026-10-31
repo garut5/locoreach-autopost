@@ -131,7 +131,8 @@
     "shop-site-https",
     "gbp-photo-removal",
     "ai-meeting-notes",
-    "staff-shortage"
+    "staff-shortage",
+    "late-review-reply"
   ],
   "reel": [
     "average-spend",
@@ -225,7 +226,8 @@
     "shop-site-https",
     "gbp-photo-removal",
     "ai-meeting-notes",
-    "staff-shortage"
+    "staff-shortage",
+    "late-review-reply"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -255,7 +257,8 @@
     "shop-site-https",
     "gbp-photo-removal",
     "ai-meeting-notes",
-    "staff-shortage"
+    "staff-shortage",
+    "late-review-reply"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -285,6 +288,7 @@
     "shop-site-https",
     "gbp-photo-removal",
     "ai-meeting-notes",
-    "staff-shortage"
+    "staff-shortage",
+    "late-review-reply"
   ]
 }
