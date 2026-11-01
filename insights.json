@@ -3,51 +3,58 @@
   "posts_analyzed": 60,
   "by_category": [
     {
+      "category": "補助金・支援制度",
+      "posts": 4,
+      "reach": 33,
+      "saved": 0,
+      "save_rate": 0.0
+    },
+    {
+      "category": "ホームページ集客",
+      "posts": 8,
+      "reach": 17.4,
+      "saved": 0,
+      "save_rate": 0.0
+    },
+    {
       "category": "MEO・Googleビジネスプロフィール",
-      "posts": 14,
-      "reach": 7.7,
+      "posts": 6,
+      "reach": 14.5,
       "saved": 0,
       "save_rate": 0.0
     },
     {
       "category": "口コミ・評価",
-      "posts": 4,
-      "reach": 7.2,
+      "posts": 6,
+      "reach": 14,
       "saved": 0,
       "save_rate": 0.0
     },
     {
       "category": "店舗経営",
       "posts": 6,
-      "reach": 6.5,
+      "reach": 10.2,
       "saved": 0,
       "save_rate": 0.0
     },
     {
       "category": "その他",
       "posts": 22,
-      "reach": 4.6,
-      "saved": 0,
-      "save_rate": 0.0
-    },
-    {
-      "category": "ホームページ集客",
-      "posts": 6,
-      "reach": 3.5,
-      "saved": 0,
-      "save_rate": 0.0
-    },
-    {
-      "category": "AI検索・AIO",
-      "posts": 4,
-      "reach": 3,
+      "reach": 8.5,
       "saved": 0,
       "save_rate": 0.0
     },
     {
       "category": "店舗×AI活用",
       "posts": 4,
-      "reach": 2.8,
+      "reach": 5.5,
+      "saved": 0,
+      "save_rate": 0.0
+    },
+    {
+      "category": "AI検索・AIO",
+      "posts": 4,
+      "reach": 5.5,
       "saved": 0,
       "save_rate": 0.0
     }
