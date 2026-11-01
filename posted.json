@@ -133,7 +133,8 @@
     "gbp-photo-removal",
     "ai-meeting-notes",
     "staff-shortage",
-    "late-review-reply"
+    "late-review-reply",
+    "compared-in-ai-answers"
   ],
   "reel": [
     "average-spend",
@@ -229,7 +230,8 @@
     "gbp-photo-removal",
     "ai-meeting-notes",
     "staff-shortage",
-    "late-review-reply"
+    "late-review-reply",
+    "compared-in-ai-answers"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -260,7 +262,8 @@
     "gbp-photo-removal",
     "ai-meeting-notes",
     "staff-shortage",
-    "late-review-reply"
+    "late-review-reply",
+    "compared-in-ai-answers"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -291,6 +294,7 @@
     "gbp-photo-removal",
     "ai-meeting-notes",
     "staff-shortage",
-    "late-review-reply"
+    "late-review-reply",
+    "compared-in-ai-answers"
   ]
 }
