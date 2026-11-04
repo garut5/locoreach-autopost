@@ -139,7 +139,8 @@
     "late-review-reply",
     "compared-in-ai-answers",
     "subsidy-application-quality",
-    "gbp-phone-number"
+    "gbp-phone-number",
+    "website-migration"
   ],
   "reel": [
     "average-spend",
@@ -241,7 +242,8 @@
     "late-review-reply",
     "compared-in-ai-answers",
     "subsidy-application-quality",
-    "gbp-phone-number"
+    "gbp-phone-number",
+    "website-migration"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -275,7 +277,8 @@
     "late-review-reply",
     "compared-in-ai-answers",
     "subsidy-application-quality",
-    "gbp-phone-number"
+    "gbp-phone-number",
+    "website-migration"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -309,6 +312,7 @@
     "late-review-reply",
     "compared-in-ai-answers",
     "subsidy-application-quality",
-    "gbp-phone-number"
+    "gbp-phone-number",
+    "website-migration"
   ]
 }
