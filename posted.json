@@ -145,7 +145,8 @@
     "gbp-phone-number",
     "website-migration",
     "gbp-directions",
-    "ai-shift-scheduling"
+    "ai-shift-scheduling",
+    "tax-free-shop-refund"
   ],
   "reel": [
     "average-spend",
@@ -253,7 +254,8 @@
     "gbp-phone-number",
     "website-migration",
     "gbp-directions",
-    "ai-shift-scheduling"
+    "ai-shift-scheduling",
+    "tax-free-shop-refund"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -290,7 +292,8 @@
     "gbp-phone-number",
     "website-migration",
     "gbp-directions",
-    "ai-shift-scheduling"
+    "ai-shift-scheduling",
+    "tax-free-shop-refund"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -327,6 +330,7 @@
     "gbp-phone-number",
     "website-migration",
     "gbp-directions",
-    "ai-shift-scheduling"
+    "ai-shift-scheduling",
+    "tax-free-shop-refund"
   ]
 }
