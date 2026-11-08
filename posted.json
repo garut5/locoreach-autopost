@@ -147,7 +147,8 @@
     "website-migration",
     "gbp-directions",
     "ai-shift-scheduling",
-    "tax-free-shop-refund"
+    "tax-free-shop-refund",
+    "review-defamation-removal"
   ],
   "reel": [
     "average-spend",
@@ -257,7 +258,8 @@
     "website-migration",
     "gbp-directions",
     "ai-shift-scheduling",
-    "tax-free-shop-refund"
+    "tax-free-shop-refund",
+    "review-defamation-removal"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -295,7 +297,8 @@
     "website-migration",
     "gbp-directions",
     "ai-shift-scheduling",
-    "tax-free-shop-refund"
+    "tax-free-shop-refund",
+    "review-defamation-removal"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -333,6 +336,7 @@
     "website-migration",
     "gbp-directions",
     "ai-shift-scheduling",
-    "tax-free-shop-refund"
+    "tax-free-shop-refund",
+    "review-defamation-removal"
   ]
 }
