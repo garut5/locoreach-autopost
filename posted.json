@@ -220,7 +220,8 @@
     "gbp-directions",
     "ai-shift-scheduling",
     "tax-free-shop-refund",
-    "review-defamation-removal"
+    "review-defamation-removal",
+    "ai-crawler-control"
   ],
   "carousel:ig_feed": [
     "shop-photos",
