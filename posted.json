@@ -151,7 +151,8 @@
     "ai-shift-scheduling",
     "tax-free-shop-refund",
     "review-defamation-removal",
-    "ai-crawler-control"
+    "ai-crawler-control",
+    "salon-equipment-subsidy"
   ],
   "reel": [
     "average-spend",
@@ -265,7 +266,8 @@
     "ai-shift-scheduling",
     "tax-free-shop-refund",
     "review-defamation-removal",
-    "ai-crawler-control"
+    "ai-crawler-control",
+    "salon-equipment-subsidy"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -305,7 +307,8 @@
     "ai-shift-scheduling",
     "tax-free-shop-refund",
     "review-defamation-removal",
-    "ai-crawler-control"
+    "ai-crawler-control",
+    "salon-equipment-subsidy"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -345,6 +348,7 @@
     "ai-shift-scheduling",
     "tax-free-shop-refund",
     "review-defamation-removal",
-    "ai-crawler-control"
+    "ai-crawler-control",
+    "salon-equipment-subsidy"
   ]
 }
