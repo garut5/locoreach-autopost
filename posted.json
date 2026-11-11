@@ -153,7 +153,8 @@
     "tax-free-shop-refund",
     "review-defamation-removal",
     "ai-crawler-control",
-    "salon-equipment-subsidy"
+    "salon-equipment-subsidy",
+    "minimum-wage-update"
   ],
   "reel": [
     "average-spend",
@@ -269,7 +270,8 @@
     "tax-free-shop-refund",
     "review-defamation-removal",
     "ai-crawler-control",
-    "salon-equipment-subsidy"
+    "salon-equipment-subsidy",
+    "minimum-wage-update"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -310,7 +312,8 @@
     "tax-free-shop-refund",
     "review-defamation-removal",
     "ai-crawler-control",
-    "salon-equipment-subsidy"
+    "salon-equipment-subsidy",
+    "minimum-wage-update"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -351,6 +354,7 @@
     "tax-free-shop-refund",
     "review-defamation-removal",
     "ai-crawler-control",
-    "salon-equipment-subsidy"
+    "salon-equipment-subsidy",
+    "minimum-wage-update"
   ]
 }
