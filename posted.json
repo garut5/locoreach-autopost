@@ -155,7 +155,8 @@
     "review-defamation-removal",
     "ai-crawler-control",
     "salon-equipment-subsidy",
-    "minimum-wage-update"
+    "minimum-wage-update",
+    "website-accessibility"
   ],
   "reel": [
     "average-spend",
@@ -273,7 +274,8 @@
     "review-defamation-removal",
     "ai-crawler-control",
     "salon-equipment-subsidy",
-    "minimum-wage-update"
+    "minimum-wage-update",
+    "website-accessibility"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -315,7 +317,8 @@
     "review-defamation-removal",
     "ai-crawler-control",
     "salon-equipment-subsidy",
-    "minimum-wage-update"
+    "minimum-wage-update",
+    "website-accessibility"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -357,6 +360,7 @@
     "review-defamation-removal",
     "ai-crawler-control",
     "salon-equipment-subsidy",
-    "minimum-wage-update"
+    "minimum-wage-update",
+    "website-accessibility"
   ]
 }
