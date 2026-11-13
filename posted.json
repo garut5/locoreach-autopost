@@ -157,7 +157,8 @@
     "ai-crawler-control",
     "salon-equipment-subsidy",
     "minimum-wage-update",
-    "website-accessibility"
+    "website-accessibility",
+    "gbp-opening-date"
   ],
   "reel": [
     "average-spend",
@@ -277,7 +278,8 @@
     "ai-crawler-control",
     "salon-equipment-subsidy",
     "minimum-wage-update",
-    "website-accessibility"
+    "website-accessibility",
+    "gbp-opening-date"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -320,7 +322,8 @@
     "ai-crawler-control",
     "salon-equipment-subsidy",
     "minimum-wage-update",
-    "website-accessibility"
+    "website-accessibility",
+    "gbp-opening-date"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -363,6 +366,7 @@
     "ai-crawler-control",
     "salon-equipment-subsidy",
     "minimum-wage-update",
-    "website-accessibility"
+    "website-accessibility",
+    "gbp-opening-date"
   ]
 }
