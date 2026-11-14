@@ -159,7 +159,8 @@
     "salon-equipment-subsidy",
     "minimum-wage-update",
     "website-accessibility",
-    "gbp-opening-date"
+    "gbp-opening-date",
+    "ai-receipt-bookkeeping"
   ],
   "reel": [
     "average-spend",
@@ -281,7 +282,8 @@
     "salon-equipment-subsidy",
     "minimum-wage-update",
     "website-accessibility",
-    "gbp-opening-date"
+    "gbp-opening-date",
+    "ai-receipt-bookkeeping"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -325,7 +327,8 @@
     "salon-equipment-subsidy",
     "minimum-wage-update",
     "website-accessibility",
-    "gbp-opening-date"
+    "gbp-opening-date",
+    "ai-receipt-bookkeeping"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -369,6 +372,7 @@
     "salon-equipment-subsidy",
     "minimum-wage-update",
     "website-accessibility",
-    "gbp-opening-date"
+    "gbp-opening-date",
+    "ai-receipt-bookkeeping"
   ]
 }
