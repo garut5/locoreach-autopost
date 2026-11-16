@@ -163,7 +163,8 @@
     "website-accessibility",
     "gbp-opening-date",
     "ai-receipt-bookkeeping",
-    "website-domain-expiry"
+    "website-domain-expiry",
+    "review-reply-signature"
   ],
   "reel": [
     "average-spend",
@@ -289,7 +290,8 @@
     "website-accessibility",
     "gbp-opening-date",
     "ai-receipt-bookkeeping",
-    "website-domain-expiry"
+    "website-domain-expiry",
+    "review-reply-signature"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -335,7 +337,8 @@
     "website-accessibility",
     "gbp-opening-date",
     "ai-receipt-bookkeeping",
-    "website-domain-expiry"
+    "website-domain-expiry",
+    "review-reply-signature"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -381,6 +384,7 @@
     "website-accessibility",
     "gbp-opening-date",
     "ai-receipt-bookkeeping",
-    "website-domain-expiry"
+    "website-domain-expiry",
+    "review-reply-signature"
   ]
 }
