@@ -244,7 +244,8 @@
     "gbp-opening-date",
     "ai-receipt-bookkeeping",
     "website-domain-expiry",
-    "review-reply-signature"
+    "review-reply-signature",
+    "clinic-ai-symptom-queries"
   ],
   "carousel:ig_feed": [
     "shop-photos",
