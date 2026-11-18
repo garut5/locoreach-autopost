@@ -167,7 +167,8 @@
     "ai-receipt-bookkeeping",
     "website-domain-expiry",
     "review-reply-signature",
-    "clinic-ai-symptom-queries"
+    "clinic-ai-symptom-queries",
+    "subsidy-gbiz-id"
   ],
   "reel": [
     "average-spend",
@@ -297,7 +298,8 @@
     "ai-receipt-bookkeeping",
     "website-domain-expiry",
     "review-reply-signature",
-    "clinic-ai-symptom-queries"
+    "clinic-ai-symptom-queries",
+    "subsidy-gbiz-id"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -345,7 +347,8 @@
     "ai-receipt-bookkeeping",
     "website-domain-expiry",
     "review-reply-signature",
-    "clinic-ai-symptom-queries"
+    "clinic-ai-symptom-queries",
+    "subsidy-gbiz-id"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -393,6 +396,7 @@
     "ai-receipt-bookkeeping",
     "website-domain-expiry",
     "review-reply-signature",
-    "clinic-ai-symptom-queries"
+    "clinic-ai-symptom-queries",
+    "subsidy-gbiz-id"
   ]
 }
