@@ -250,7 +250,8 @@
     "website-domain-expiry",
     "review-reply-signature",
     "clinic-ai-symptom-queries",
-    "subsidy-gbiz-id"
+    "subsidy-gbiz-id",
+    "invoice-number-check"
   ],
   "carousel:ig_feed": [
     "shop-photos",
