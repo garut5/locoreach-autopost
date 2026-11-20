@@ -86,7 +86,8 @@
     "review-reply-signature",
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
-    "invoice-number-check"
+    "invoice-number-check",
+    "gbp-relocation"
   ],
   "carousel": [
     "average-spend",
