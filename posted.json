@@ -171,7 +171,8 @@
     "review-reply-signature",
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
-    "invoice-number-check"
+    "invoice-number-check",
+    "gbp-relocation"
   ],
   "reel": [
     "average-spend",
@@ -407,6 +408,7 @@
     "review-reply-signature",
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
-    "invoice-number-check"
+    "invoice-number-check",
+    "gbp-relocation"
   ]
 }
