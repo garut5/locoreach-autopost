@@ -173,7 +173,8 @@
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
     "invoice-number-check",
-    "gbp-relocation"
+    "gbp-relocation",
+    "gbp-duplicate-listing"
   ],
   "reel": [
     "average-spend",
@@ -309,7 +310,8 @@
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
     "invoice-number-check",
-    "gbp-relocation"
+    "gbp-relocation",
+    "gbp-duplicate-listing"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -360,7 +362,8 @@
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
     "invoice-number-check",
-    "gbp-relocation"
+    "gbp-relocation",
+    "gbp-duplicate-listing"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -411,6 +414,7 @@
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
     "invoice-number-check",
-    "gbp-relocation"
+    "gbp-relocation",
+    "gbp-duplicate-listing"
   ]
 }
