@@ -256,7 +256,8 @@
     "clinic-ai-symptom-queries",
     "subsidy-gbiz-id",
     "invoice-number-check",
-    "gbp-relocation"
+    "gbp-relocation",
+    "gbp-duplicate-listing"
   ],
   "carousel:ig_feed": [
     "shop-photos",
