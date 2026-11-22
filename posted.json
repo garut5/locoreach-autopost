@@ -259,7 +259,8 @@
     "subsidy-gbiz-id",
     "invoice-number-check",
     "gbp-relocation",
-    "gbp-duplicate-listing"
+    "gbp-duplicate-listing",
+    "review-cannot-hide"
   ],
   "carousel:ig_feed": [
     "shop-photos",
