@@ -175,7 +175,8 @@
     "subsidy-gbiz-id",
     "invoice-number-check",
     "gbp-relocation",
-    "gbp-duplicate-listing"
+    "gbp-duplicate-listing",
+    "review-cannot-hide"
   ],
   "reel": [
     "average-spend",
@@ -313,7 +314,8 @@
     "subsidy-gbiz-id",
     "invoice-number-check",
     "gbp-relocation",
-    "gbp-duplicate-listing"
+    "gbp-duplicate-listing",
+    "review-cannot-hide"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -365,7 +367,8 @@
     "subsidy-gbiz-id",
     "invoice-number-check",
     "gbp-relocation",
-    "gbp-duplicate-listing"
+    "gbp-duplicate-listing",
+    "review-cannot-hide"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -417,6 +420,7 @@
     "subsidy-gbiz-id",
     "invoice-number-check",
     "gbp-relocation",
-    "gbp-duplicate-listing"
+    "gbp-duplicate-listing",
+    "review-cannot-hide"
   ]
 }
