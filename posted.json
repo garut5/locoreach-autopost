@@ -262,7 +262,8 @@
     "invoice-number-check",
     "gbp-relocation",
     "gbp-duplicate-listing",
-    "review-cannot-hide"
+    "review-cannot-hide",
+    "website-cookie-consent"
   ],
   "carousel:ig_feed": [
     "shop-photos",
