@@ -177,7 +177,8 @@
     "invoice-number-check",
     "gbp-relocation",
     "gbp-duplicate-listing",
-    "review-cannot-hide"
+    "review-cannot-hide",
+    "website-cookie-consent"
   ],
   "reel": [
     "average-spend",
@@ -317,7 +318,8 @@
     "invoice-number-check",
     "gbp-relocation",
     "gbp-duplicate-listing",
-    "review-cannot-hide"
+    "review-cannot-hide",
+    "website-cookie-consent"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -370,7 +372,8 @@
     "invoice-number-check",
     "gbp-relocation",
     "gbp-duplicate-listing",
-    "review-cannot-hide"
+    "review-cannot-hide",
+    "website-cookie-consent"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -423,6 +426,7 @@
     "invoice-number-check",
     "gbp-relocation",
     "gbp-duplicate-listing",
-    "review-cannot-hide"
+    "review-cannot-hide",
+    "website-cookie-consent"
   ]
 }
