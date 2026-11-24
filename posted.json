@@ -90,7 +90,8 @@
     "gbp-relocation",
     "gbp-duplicate-listing",
     "review-cannot-hide",
-    "website-cookie-consent"
+    "website-cookie-consent",
+    "subsidy-tax-treatment"
   ],
   "carousel": [
     "average-spend",
