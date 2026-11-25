@@ -181,7 +181,8 @@
     "gbp-duplicate-listing",
     "review-cannot-hide",
     "website-cookie-consent",
-    "subsidy-tax-treatment"
+    "subsidy-tax-treatment",
+    "ai-adoption-failure"
   ],
   "reel": [
     "average-spend",
@@ -325,7 +326,8 @@
     "gbp-duplicate-listing",
     "review-cannot-hide",
     "website-cookie-consent",
-    "subsidy-tax-treatment"
+    "subsidy-tax-treatment",
+    "ai-adoption-failure"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -380,7 +382,8 @@
     "gbp-duplicate-listing",
     "review-cannot-hide",
     "website-cookie-consent",
-    "subsidy-tax-treatment"
+    "subsidy-tax-treatment",
+    "ai-adoption-failure"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -435,6 +438,7 @@
     "gbp-duplicate-listing",
     "review-cannot-hide",
     "website-cookie-consent",
-    "subsidy-tax-treatment"
+    "subsidy-tax-treatment",
+    "ai-adoption-failure"
   ]
 }
