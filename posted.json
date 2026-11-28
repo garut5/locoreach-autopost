@@ -187,7 +187,8 @@
     "subsidy-tax-treatment",
     "ai-adoption-failure",
     "price-info-in-ai",
-    "closure-announcement"
+    "closure-announcement",
+    "busy-season-prep"
   ],
   "reel": [
     "average-spend",
@@ -337,7 +338,8 @@
     "subsidy-tax-treatment",
     "ai-adoption-failure",
     "price-info-in-ai",
-    "closure-announcement"
+    "closure-announcement",
+    "busy-season-prep"
   ],
   "carousel:ig_story": [
     "shop-photos",
@@ -395,7 +397,8 @@
     "subsidy-tax-treatment",
     "ai-adoption-failure",
     "price-info-in-ai",
-    "closure-announcement"
+    "closure-announcement",
+    "busy-season-prep"
   ],
   "carousel:threads": [
     "shop-photos",
@@ -453,6 +456,7 @@
     "subsidy-tax-treatment",
     "ai-adoption-failure",
     "price-info-in-ai",
-    "closure-announcement"
+    "closure-announcement",
+    "busy-season-prep"
   ]
 }
